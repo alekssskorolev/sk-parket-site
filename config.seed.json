@@ -267,7 +267,9 @@
       "spec": "18 кг · на 25 м²",
       "waste": 0,
       "active": true,
-      "note": ""
+      "note": "",
+      "packSize": 18,
+      "packUnit": "кг"
     },
     {
       "id": "hardware",
@@ -295,7 +297,9 @@
       "spec": "7 кг · расход 1,2 кг/м²",
       "waste": 0,
       "active": true,
-      "note": ""
+      "note": "",
+      "packSize": 7,
+      "packUnit": "кг"
     },
     {
       "id": "putty",
@@ -309,7 +313,9 @@
       "spec": "5 л · на 50 м²",
       "waste": 0,
       "active": true,
-      "note": ""
+      "note": "",
+      "packSize": 5,
+      "packUnit": "л"
     },
     {
       "id": "abrasives",
