@@ -16,7 +16,7 @@ export function validateConfig(c) {
    if(['woods','finishes','patterns','items'].includes(key)&&!num(x.price,0.01,10000000))fail('Цена должна быть больше нуля');
    if(['woods','finishes'].includes(key)&&!text(x.spec,150))fail('Укажите характеристику материала');
    if(key==='finishes'&&(!num(x.packSize,.01,1000)||!num(x.coverage,.01,100000)))fail('Укажите объём и площадь банки на весь цикл');
-   if(key==='patterns'&&(!num(x.waste,0,100)||!['straight','herringbone','checker','custom'].includes(x.visual)||typeof x.individual!=='boolean'))fail('Проверьте рисунок и запас');
+   if(key==='patterns'&&(!num(x.waste,0,100)||!['straight','herringbone','checker','custom','unknown'].includes(x.visual)||typeof x.individual!=='boolean'))fail('Проверьте рисунок и запас');
    if(key==='bases'&&!['choose','existing'].includes(x.mode))fail('Проверьте сценарий основания');
    if(key==='items'&&(!['work','material'].includes(x.kind)||!['m2','pack','sheet'].includes(x.unit)||!['none','chem'].includes(x.owner)||!num(x.consumption,.00001,100)||!num(x.waste,0,100)||!text(x.spec,150)||!['base','chem','work'].includes(x.group)))fail('Проверьте единицы, расход и тип позиции');
   }

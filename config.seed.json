@@ -104,6 +104,16 @@
       "waste": 0,
       "visual": "custom",
       "individual": true
+    },
+    {
+      "id": "pattern-undecided",
+      "name": "Пока не определился",
+      "active": true,
+      "note": "Поможем выбрать рисунок. Паркет и укладку оценим после выбора.",
+      "price": 1000,
+      "waste": 7,
+      "visual": "unknown",
+      "individual": true
     }
   ],
   "bases": [

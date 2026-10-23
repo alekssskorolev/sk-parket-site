@@ -22,10 +22,9 @@ for(const f of ['index.html','admin.html','admin.css','site.js','admin.js','engi
   s=s.replace("$('logout').onclick=guarded(async()=>{if(dirty&&!confirm('Несохранённые изменения будут потеряны. Выйти?'))return;await api('/api/logout','POST',{});location.reload()});", "$('logout').textContent='К сайту';$('logout').onclick=()=>{if(!dirty||confirm('Уйти без сохранения черновика?'))location.href='./index.html'};");
   s=s.replace("a.href='/api/admin/photos/'+ph.id;", "a.href=window.skDemoPhoto(ph.id);");
   s=s.replace('Контакты доступны только после входа.','Демо-заявки доступны только в текущем браузере; настоящей авторизации нет.');
-  s=s.replace("$('title').textContent=labels[section];", "$('title').textContent=labels[section];if(section==='woods')window.skDemoTools?.();");
-  s += `\nwindow.skDemoTools=()=>{if(document.querySelector('.demo-tools'))return;const d=el('div',undefined,'demo-tools'),exportButton=el('button','Скачать настройки JSON','quiet'),reset=el('button','Сбросить демо-данные','quiet danger');exportButton.onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(c,null,2)],{type:'application/json'})),a=el('a');a.href=url;a.download='sk-parket-settings.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};const file=el('input');file.type='file';file.accept='.json,application/json';file.setAttribute('aria-label','Импорт настроек JSON');file.onchange=guarded(async()=>{const f=file.files[0];if(!f)return;if(f.size>1000000)throw Error('Файл слишком большой');const next=JSON.parse(await f.text());validateConfig(next);c=next;mark();render();toast('Настройки загружены в черновик. Проверьте и сохраните.')});reset.onclick=()=>{if(confirm('Стереть локальные настройки и все тестовые заявки?')){localStorage.removeItem('sk-parket-pages-demo-v1');dirty=false;location.reload()}};d.append(exportButton,file,reset);document.querySelector('main').insertBefore(d,$('intro'));};window.skDemoTools();\n`;
+
  }
- if(f==='admin.html')s=s.replace('Управление сайтом</span>','Демо-конструктор</span>');
+ if(f==='admin.html'){s=s.replace('Управление сайтом</span>','Демо-конструктор</span>');s=s.replace('<a href="./index.html">Сайт</a> · <a href="./admin.html">Демо-админка</a>','');}
  if(f==='index.html')s=s.replace('Даю <a','Для теста подтверждаю <a');
  writeFileSync(new URL(f,dir),s);
 }
