@@ -10,3 +10,5 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 @media(max-width:650px){.lead-overview{padding:16px}.lead-facts{grid-template-columns:1fr;gap:16px}.lead-fact-cost dd{font-size:21px}}
 
 #content>.table-note{width:100%;max-width:none;margin:18px 0 0;box-sizing:border-box;padding:16px;border-radius:8px;line-height:1.6}#content>.table-note.muted{background:#edf2f6;border:1px solid var(--line)}.lead-client-name{font-size:16px;font-weight:600;margin:0 0 10px}.lead-master-note{margin-top:18px;padding:12px;border:1px solid #d9c992;border-left:3px solid #b79732;border-radius:7px;background:#fff9e6}.lead-master-note>span{display:block;font-size:11px;color:#71613c;margin-bottom:6px}.lead-master-note p{margin:0;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+
+.notification-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 18px}.notification-tools span{max-width:500px;line-height:1.5}

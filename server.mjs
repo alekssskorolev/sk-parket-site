@@ -5,6 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomBytes,createHash,scrypt,timingSafeEqual} from 'node:crypto';
 import {promisify} from 'node:util';
+import {sendTelegram,telegramText} from './lib/telegram.mjs';
 import {validateConfig,calculate} from './public/engine.js';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const env=process.env,port=Number(env.PORT||3000),host=env.HOST||'127.0.0.1',origin=env.PUBLIC_ORIGIN||`http://localhost:${port}`,production=env.NODE_ENV==='production';
@@ -20,12 +21,18 @@ CREATE TABLE IF NOT EXISTS draft (id INTEGER PRIMARY KEY CHECK(id=1), config TEX
 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT NOT NULL, phone TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', comment TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', note TEXT NOT NULL DEFAULT '', version INTEGER, estimate TEXT, consent_version TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS photos (id INTEGER PRIMARY KEY AUTOINCREMENT, lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE, content BLOB NOT NULL, mime TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS telegram_outbox (lead_id INTEGER PRIMARY KEY REFERENCES leads(id) ON DELETE CASCADE, attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0, delivered TEXT, last_error TEXT NOT NULL DEFAULT '');
 `);
 if(!db.prepare('PRAGMA table_info(leads)').all().some(x=>x.name==='name'))db.exec("ALTER TABLE leads ADD COLUMN name TEXT NOT NULL DEFAULT ''");
 if(!db.prepare('SELECT id FROM versions LIMIT 1').get()){
  const seed=validateConfig(JSON.parse(readFileSync(path.join(root,'config.seed.json'),'utf8')));
  db.prepare('INSERT INTO versions(created,config) VALUES(?,?)').run(new Date().toISOString(),JSON.stringify(seed));db.prepare('INSERT INTO draft VALUES(1,?,1)').run(JSON.stringify(seed));
 }
+const telegramConfigured=!!env.TELEGRAM_BOT_TOKEN&&!!env.TELEGRAM_CHAT_ID;
+if(!!env.TELEGRAM_BOT_TOKEN!==!!env.TELEGRAM_CHAT_ID)console.warn('Telegram отключён: нужны токен и ID чата в окружении сервера.');
+let telegramBusy=false;
+async function flushTelegram(){if(!telegramConfigured||telegramBusy)return;telegramBusy=true;try{const jobs=db.prepare('SELECT lead_id,attempts FROM telegram_outbox WHERE delivered IS NULL AND attempts<5 AND next_attempt<=? ORDER BY lead_id LIMIT 5').all(Date.now());for(const job of jobs){const lead=db.prepare('SELECT * FROM leads WHERE id=?').get(job.lead_id);if(!lead)continue;try{await sendTelegram({token:env.TELEGRAM_BOT_TOKEN,chatId:env.TELEGRAM_CHAT_ID,text:telegramText(lead,origin)});db.prepare("UPDATE telegram_outbox SET delivered=?,attempts=attempts+1,last_error='' WHERE lead_id=?").run(new Date().toISOString(),job.lead_id)}catch(error){const delay=Math.max(30*2**job.attempts,Number(error.retryAfter)||0)*1000;db.prepare('UPDATE telegram_outbox SET attempts=attempts+1,next_attempt=?,last_error=? WHERE lead_id=?').run(Date.now()+delay,'Ошибка доставки Telegram',job.lead_id);console.warn('Telegram: доставка заявки №'+job.lead_id+' не удалась; попытка '+(job.attempts+1)+' из 5.')}}}catch{console.warn('Telegram: не удалось обработать очередь уведомлений.')}finally{telegramBusy=false}}
+const telegramTimer=setInterval(flushTelegram,15000);telegramTimer.unref();
 function current(){const v=db.prepare('SELECT * FROM versions ORDER BY id DESC LIMIT 1').get();return {version:v.id,updated:v.created,config:JSON.parse(v.config)}}
 function state(){const d=db.prepare('SELECT * FROM draft WHERE id=1').get();return {draft:JSON.parse(d.config),revision:d.revision,published:current(),history:db.prepare('SELECT id,created FROM versions ORDER BY id DESC LIMIT 20').all()}}
 const hash=s=>createHash('sha256').update(s).digest('hex');
@@ -82,8 +89,8 @@ const server=http.createServer({maxHeaderSize:16384},async(req,res)=>{
    const v=current();let estimate=null;if(b.selection){if(b.version!==v.version)fail(409,'Цены обновились. Пересчитайте стоимость и отправьте заявку ещё раз.');estimate=calculate(v.config,b.selection)}
    const photos=b.photos||[];if(!Array.isArray(photos)||photos.length>6)fail(400,'Не более шести фото');
    const attachments=photos.map(x=>{if(typeof x.data!=='string'||x.data.length>2800000||!/^[A-Za-z0-9+/]*={0,2}$/.test(x.data))fail(400,'Неверное фото');const data=Buffer.from(x.data,'base64');if(data.length>2*1024*1024||data.length<4||data[0]!==255||data[1]!==216||data[2]!==255)fail(400,'Принимаются JPEG-фотографии до 2 МБ');return data});
-   db.exec('BEGIN');let id;try{const r=db.prepare('INSERT INTO leads(created,phone,name,comment,version,estimate,consent_version) VALUES(?,?,?,?,?,?,?)').run(new Date().toISOString(),phone,name,b.comment,v.version,estimate?JSON.stringify(estimate):null,'policy-v1');id=Number(r.lastInsertRowid);for(const data of attachments)db.prepare('INSERT INTO photos(lead_id,content,mime) VALUES(?,?,?)').run(id,data,'image/jpeg');db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
-   return send(201,{ok:true,id});
+   db.exec('BEGIN');let id;try{const r=db.prepare('INSERT INTO leads(created,phone,name,comment,version,estimate,consent_version) VALUES(?,?,?,?,?,?,?)').run(new Date().toISOString(),phone,name,b.comment,v.version,estimate?JSON.stringify(estimate):null,'policy-v1');id=Number(r.lastInsertRowid);for(const data of attachments)db.prepare('INSERT INTO photos(lead_id,content,mime) VALUES(?,?,?)').run(id,data,'image/jpeg');if(telegramConfigured)db.prepare('INSERT INTO telegram_outbox(lead_id) VALUES(?)').run(id);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
+   if(telegramConfigured)setImmediate(flushTelegram);return send(201,{ok:true,id});
   }
   if(p==='/api/admin/leads'&&req.method==='GET'){
    auth(req);const after=Math.max(0,Number(u.searchParams.get('before')||0));
