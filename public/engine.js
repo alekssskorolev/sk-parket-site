@@ -42,7 +42,7 @@ export function calculate(c,s) {
  const rows=[];
  const add=(name,detail,price,quantity,kind,group,excluded=false,pending=false,unit='м²')=>{
   const m=c.margins,low=kind==='work'?m.workLow:m.materialLow,high=kind==='work'?m.workHigh:m.materialHigh;
-  rows.push({name,detail,unit,quantity:q(quantity),excluded,pending,group,cost:excluded||pending?null:[Math.round(price*quantity*(1-low/100)),Math.round(price*quantity*(1+high/100))]});
+  rows.push({name,detail,unit,kind,quantity:q(quantity),excluded,pending,group,cost:excluded||pending?null:[Math.round(price*quantity*(1-low/100)),Math.round(price*quantity*(1+high/100))]});
  };
  const woodArea=Math.ceil(area*(1+pattern.waste/100)*10-1e-8)/10;
  add(wood.name,wood.spec+' · '+woodArea+' м² · запас '+pattern.waste+'%'+(wood.note?' · '+wood.note:''),wood.price,woodArea,'material','wood',!!s.ownParquet,pattern.individual&&!s.ownParquet);

@@ -18,9 +18,10 @@ const db=new DatabaseSync(path.join(data,'parket.sqlite'));db.exec(`PRAGMA journ
 CREATE TABLE IF NOT EXISTS versions (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT NOT NULL, config TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS draft (id INTEGER PRIMARY KEY CHECK(id=1), config TEXT NOT NULL, revision INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, expires INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT NOT NULL, phone TEXT NOT NULL, comment TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', note TEXT NOT NULL DEFAULT '', version INTEGER, estimate TEXT, consent_version TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT NOT NULL, phone TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', comment TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', note TEXT NOT NULL DEFAULT '', version INTEGER, estimate TEXT, consent_version TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS photos (id INTEGER PRIMARY KEY AUTOINCREMENT, lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE, content BLOB NOT NULL, mime TEXT NOT NULL);
 `);
+if(!db.prepare('PRAGMA table_info(leads)').all().some(x=>x.name==='name'))db.exec("ALTER TABLE leads ADD COLUMN name TEXT NOT NULL DEFAULT ''");
 if(!db.prepare('SELECT id FROM versions LIMIT 1').get()){
  const seed=validateConfig(JSON.parse(readFileSync(path.join(root,'config.seed.json'),'utf8')));
  db.prepare('INSERT INTO versions(created,config) VALUES(?,?)').run(new Date().toISOString(),JSON.stringify(seed));db.prepare('INSERT INTO draft VALUES(1,?,1)').run(JSON.stringify(seed));
@@ -76,16 +77,17 @@ const server=http.createServer({maxHeaderSize:16384},async(req,res)=>{
    if(!leadsEnabled)fail(503,'Приём заявок пока не включён.');if(limited(req,'leads',6,3600000))fail(429,'Слишком много обращений. Попробуйте позже.');
    const b=await body(req,13*1024*1024);if(b.website)fail(400,'Не удалось принять заявку');
    const phone=String(b.phone||'').replace(/\D/g,'');if(!/^(?:[78])?\d{10}$/.test(phone)||b.consent!==true)fail(400,'Проверьте телефон и согласие');
+   if(b.name!==undefined&&(typeof b.name!=='string'||b.name.length>100||/[\u0000-\u001f\u007f]/.test(b.name)))fail(400,'Имя — до 100 символов');const name=(b.name||'').trim();
    if(typeof b.comment!=='string'||b.comment.length>2000)fail(400,'Комментарий — до 2000 символов');
    const v=current();let estimate=null;if(b.selection){if(b.version!==v.version)fail(409,'Цены обновились. Пересчитайте стоимость и отправьте заявку ещё раз.');estimate=calculate(v.config,b.selection)}
    const photos=b.photos||[];if(!Array.isArray(photos)||photos.length>6)fail(400,'Не более шести фото');
    const attachments=photos.map(x=>{if(typeof x.data!=='string'||x.data.length>2800000||!/^[A-Za-z0-9+/]*={0,2}$/.test(x.data))fail(400,'Неверное фото');const data=Buffer.from(x.data,'base64');if(data.length>2*1024*1024||data.length<4||data[0]!==255||data[1]!==216||data[2]!==255)fail(400,'Принимаются JPEG-фотографии до 2 МБ');return data});
-   db.exec('BEGIN');let id;try{const r=db.prepare('INSERT INTO leads(created,phone,comment,version,estimate,consent_version) VALUES(?,?,?,?,?,?)').run(new Date().toISOString(),phone,b.comment,v.version,estimate?JSON.stringify(estimate):null,'policy-v1');id=Number(r.lastInsertRowid);for(const data of attachments)db.prepare('INSERT INTO photos(lead_id,content,mime) VALUES(?,?,?)').run(id,data,'image/jpeg');db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
+   db.exec('BEGIN');let id;try{const r=db.prepare('INSERT INTO leads(created,phone,name,comment,version,estimate,consent_version) VALUES(?,?,?,?,?,?,?)').run(new Date().toISOString(),phone,name,b.comment,v.version,estimate?JSON.stringify(estimate):null,'policy-v1');id=Number(r.lastInsertRowid);for(const data of attachments)db.prepare('INSERT INTO photos(lead_id,content,mime) VALUES(?,?,?)').run(id,data,'image/jpeg');db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
    return send(201,{ok:true,id});
   }
   if(p==='/api/admin/leads'&&req.method==='GET'){
    auth(req);const after=Math.max(0,Number(u.searchParams.get('before')||0));
-   const rows=db.prepare('SELECT id,created,phone,comment,status,note,version,estimate FROM leads WHERE (?=0 OR id<?) ORDER BY id DESC LIMIT 50').all(after,after);
+   const rows=db.prepare('SELECT id,created,phone,name,comment,status,note,version,estimate FROM leads WHERE (?=0 OR id<?) ORDER BY id DESC LIMIT 50').all(after,after);
    return send(200,{leads:rows.map(({estimate,...x})=>{const e=estimate?JSON.parse(estimate):null;return {...x,estimateSummary:e?{total:e.total,partial:e.partial,area:e.area,pattern:e.pattern}:null}}),newCount:db.prepare("SELECT COUNT(*) AS n FROM leads WHERE status='new'").get().n,next:rows.length===50?rows.at(-1).id:null});
   }
   const lm=p.match(/^\/api\/admin\/leads\/(\d+)$/);
