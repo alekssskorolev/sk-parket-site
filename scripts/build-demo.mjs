@@ -9,7 +9,7 @@ for(const f of ['index.html','admin.html','admin.css','site.js','admin.js','engi
  if(f.endsWith('.js')&&!['engine.js','lead-export.js'].includes(f))s="import './demo-api.js';\n"+s.replaceAll("from '/engine.js'","from './engine.js'").replaceAll("from '/lead-export.js'","from './lead-export.js'");
  if(f==='site.js'){
   s=s.replace(/\$\('lead-readiness'\)\.textContent=[^;]+;/, "$('lead-readiness').textContent='Заявка сохранится только в этом браузере и будет доступна в разделе «Заявки». Передача мастеру пока не подключена.';");
-  s=s.replace("$('form-status').textContent='Заявка №'+result.id+' принята. Мастер свяжется с вами.';", "$('form-status').textContent='Заявка №'+result.id+' сохранена в этом браузере. Передача мастеру пока не подключена.';");
+  s=s.replace("Ваша заявка отправлена. Мастер свяжется с вами в ближайшее время", "Ваша заявка сохранена в этом браузере. Отправка мастеру пока не подключена.");
   s += "\naddEventListener('storage',e=>{if(e.key==='sk-parket-pages-demo-v1')refreshConfig()});addEventListener('sk-demo-update',refreshConfig);\n";
  }
  if(f==='admin.js'){
