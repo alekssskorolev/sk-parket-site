@@ -85,8 +85,8 @@ const server=http.createServer({maxHeaderSize:16384},async(req,res)=>{
   }
   if(p==='/api/admin/leads'&&req.method==='GET'){
    auth(req);const after=Math.max(0,Number(u.searchParams.get('before')||0));
-   const rows=db.prepare('SELECT id,created,phone,comment,status,note,version FROM leads WHERE (?=0 OR id<?) ORDER BY id DESC LIMIT 50').all(after,after);
-   return send(200,{leads:rows,newCount:db.prepare("SELECT COUNT(*) AS n FROM leads WHERE status='new'").get().n,next:rows.length===50?rows.at(-1).id:null});
+   const rows=db.prepare('SELECT id,created,phone,comment,status,note,version,estimate FROM leads WHERE (?=0 OR id<?) ORDER BY id DESC LIMIT 50').all(after,after);
+   return send(200,{leads:rows.map(({estimate,...x})=>{const e=estimate?JSON.parse(estimate):null;return {...x,estimateSummary:e?{total:e.total,partial:e.partial,area:e.area,pattern:e.pattern}:null}}),newCount:db.prepare("SELECT COUNT(*) AS n FROM leads WHERE status='new'").get().n,next:rows.length===50?rows.at(-1).id:null});
   }
   const lm=p.match(/^\/api\/admin\/leads\/(\d+)$/);
   if(lm){auth(req,req.method!=='GET');const id=Number(lm[1]);if(!db.prepare('SELECT id FROM leads WHERE id=?').get(id))fail(404,'Заявка не найдена');
@@ -96,7 +96,7 @@ const server=http.createServer({maxHeaderSize:16384},async(req,res)=>{
   }
   const pm=p.match(/^\/api\/admin\/photos\/(\d+)$/);if(pm&&req.method==='GET'){auth(req);const photo=db.prepare('SELECT content,mime FROM photos WHERE id=?').get(Number(pm[1]));if(!photo)fail(404,'Фото не найдено');res.writeHead(200,{'Content-Type':photo.mime,'Cache-Control':'no-store','Content-Disposition':'inline'});return res.end(Buffer.from(photo.content))}
   if(p==='/health'&&req.method==='GET')return send(200,{ok:true});
-  const staticFiles={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/admin.html':'admin.html','/site.js':'site.js','/admin.js':'admin.js','/admin.css':'admin.css','/engine.js':'engine.js','/privacy':'privacy.html','/consent':'consent.html'};
+  const staticFiles={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/admin.html':'admin.html','/site.js':'site.js','/admin.js':'admin.js','/admin.css':'admin.css','/engine.js':'engine.js','/lead-export.js':'lead-export.js','/privacy':'privacy.html','/consent':'consent.html'};
   const f=staticFiles[p];if(!f||!['GET','HEAD'].includes(req.method))fail(404,'Не найдено');
   const ext=path.extname(f),types={'.html':'text/html','.js':'text/javascript','.css':'text/css'};const content=readFileSync(path.join(root,'public',f));
   res.writeHead(200,{'Content-Type':types[ext]+'; charset=utf-8','Cache-Control':'no-store',...(p.includes('admin')?{'X-Robots-Tag':'noindex, nofollow'}:{})});res.end(req.method==='HEAD'?undefined:content);
