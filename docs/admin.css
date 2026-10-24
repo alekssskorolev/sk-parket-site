@@ -19,3 +19,15 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 /* Navigation groups remain a compact tab strip on phones. */
 .nav-group{display:grid;gap:5px}.nav-group+.nav-group{margin-top:18px}.nav-group-title{font-size:11px;line-height:1.4;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 16px 7px}
 @media(max-width:850px){#navigation .nav-group{display:contents}#navigation .nav-group-title{display:none}}
+
+/* Category headings are labels; navigation actions are clearly clickable cards. */
+#navigation .nav-group{gap:6px}
+#navigation .nav-group-title{font-size:12px;font-weight:700;line-height:1.5;letter-spacing:.08em;color:#5c6b77;margin:0 12px 8px;text-transform:uppercase;cursor:default}
+#navigation button{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;width:100%;padding:11px 30px 11px 14px;border:1px solid #dbe4eb;border-radius:8px;background:#fff;color:#263b4b;font-size:14px;font-weight:500;line-height:1.4;text-align:left;transition:background-color .15s,border-color .15s}
+#navigation button:after{content:'';position:absolute;right:14px;top:50%;width:6px;height:6px;border-right:1.5px solid currentColor;border-top:1.5px solid currentColor;transform:translateY(-50%) rotate(45deg);opacity:.5}
+#navigation button:hover{background:#edf5fc;border-color:#a5c4df;filter:none}
+#navigation button.active{background:#1263a5;border-color:#1263a5;color:#fff;font-weight:600;box-shadow:0 2px 5px #1263a51a}
+#navigation button.active:after{opacity:1}
+@media(min-width:851px){#navigation .nav-group+.nav-group{margin-top:22px;padding-top:18px;border-top:1px solid #dce3e9}}
+@media(max-width:850px){#navigation{gap:8px;padding:2px 0 8px}#navigation button{width:auto;flex:0 0 auto;min-height:44px;padding:10px 14px}#navigation button:after{display:none}#navigation .nav-group-title{display:none}}
+@media(prefers-reduced-motion:reduce){#navigation button{transition:none}}
