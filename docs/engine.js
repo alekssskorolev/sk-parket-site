@@ -46,6 +46,7 @@ export function calculate(c,s) {
  };
  const woodArea=Math.ceil(area*(1+pattern.waste/100)*10-1e-8)/10;
  add(wood.name,wood.spec+' · '+woodArea+' м² · запас '+pattern.waste+'%'+(wood.note?' · '+wood.note:''),wood.price,woodArea,'material','wood',!!s.ownParquet,pattern.individual&&!s.ownParquet);
+ add('Укладка · '+pattern.name,area+' м² · '+pattern.note,pattern.price,area,'work','work',false,pattern.individual);
  const unique=new Set([...base.recipe,...(base.mode==='choose'?foundation.recipe:[]),...c.common]);
  for(const id of unique){const x=c.items.find(x=>x.id===id&&x.active);if(!x)throw new InputError('Некорректный состав');
   if(isChemical(x,'items')&&x.pricingMode==='area'){const m=materialData(x,'items'),quantity=area*(1+x.waste/100);add(x.name,area+' м² · расход '+q(m.usage)+' '+m.packUnit+'/м²'+(x.waste?' · запас '+x.waste+'%':'')+' · '+x.spec,x.areaPrice,quantity,x.kind,x.group,!!s.ownSupplies&&x.owner==='chem',false,'м²');continue}
@@ -55,7 +56,6 @@ export function calculate(c,s) {
  }
  const packs=Math.ceil(area/finish.coverage-1e-8);
  if(finish.pricingMode==='area'){const m=materialData(finish,'finishes');add('Лак · '+finish.name,area+' м² · расход '+q(m.usage)+' л/м² на все 3 слоя · '+finish.spec,finish.areaPrice,area,'material','chem',!!s.ownSupplies,false,'м²')}else add('Лак · '+finish.name,packs+' уп. × '+finish.packSize+' л · '+finish.spec+' · 1 уп. на '+finish.coverage+' м² на весь цикл',finish.price,packs,'material','chem',!!s.ownSupplies,false,'уп.');
- add('Укладка · '+pattern.name,area+' м² · '+pattern.note,pattern.price,area,'work','work',false,pattern.individual);
  const total=rows.reduce((a,x)=>x.cost?[a[0]+x.cost[0],a[1]+x.cost[1]]:a,[0,0]);
  const titles={wood:'Паркет',base:'Подготовка основания',chem:'Клей, химия и расходники',work:'Работы по паркету'};
  const groups=Object.entries(titles).map(([id,title])=>({title,rows:rows.filter(x=>x.group===id)})).filter(g=>g.rows.length);
