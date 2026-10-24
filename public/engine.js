@@ -2,6 +2,18 @@ class InputError extends Error {constructor(message){super(message);this.status=
 /* Shared calculation engine: used by site, admin preview and server. No executable formulas in data. */
 export function isChemical(x,key){return key==='finishes'||key==='items'&&x.kind==='material'&&x.unit==='pack'}
 export function materialData(x,key){const finish=key==='finishes',match=String(x.spec||'').match(/(\d+(?:[.,]\d+)?)\s*(кг|л)(?=\s|[·;,.]|$)/u),size=x.packSize||(match?Number(match[1].replace(',','.')):1),packUnit=finish?'л':x.packUnit||(match?match[2]:'уп.');const usage=finish?size/x.coverage:x.consumption*size;return {size,packUnit,usage,rate:x.pricingMode==='area'?x.areaPrice:finish?x.price/x.coverage:x.price*x.consumption,mode:x.pricingMode||'pack'}}
+// Changing a table's price per m² must not switch the purchase method.
+export function updateMaterialRate(x,key,rate){
+ if(!isChemical(x,key)||!Number.isFinite(rate)||rate<.01||rate>10000000)throw new InputError('Проверьте цену за м²');
+ const m=materialData(x,key);
+ if(m.mode==='area'){x.areaPrice=rate;return}
+ const packPrice=key==='finishes'?rate*x.coverage:rate/x.consumption;
+ if(!Number.isFinite(packPrice)||packPrice<.01||packPrice>10000000)throw new InputError('Стоимость упаковки должна быть от 0,01 до 10 000 000 ₽. Проверьте цену и расход.');
+ x.price=packPrice;
+}
+const legacyExclusions='Расчёт предполагает пригодное основание. Доставка, подъём, ремонт основания, демонтаж, плинтусы и вывоз — отдельно.';
+export const defaultExclusions='В расчёт входят выбранные материалы и перечисленные работы. Демонтаж старого покрытия, ремонт и выравнивание основания, доставка, подъём, плинтусы и вывоз мусора рассчитываются отдельно — если они нужны.';
+export function calculationExclusions(c){return c.exclusions===legacyExclusions?defaultExclusions:c.exclusions}
 export function validateConfig(c) {
  const fail=s=>{throw new InputError(s)};
  if(!c||c.schema!==1)fail('Неверная версия данных');
@@ -59,6 +71,6 @@ export function calculate(c,s) {
  const total=rows.reduce((a,x)=>x.cost?[a[0]+x.cost[0],a[1]+x.cost[1]]:a,[0,0]);
  const titles={wood:'Паркет',base:'Подготовка основания',chem:'Клей, химия и расходники',work:'Работы по паркету'};
  const groups=Object.entries(titles).map(([id,title])=>({title,rows:rows.filter(x=>x.group===id)})).filter(g=>g.rows.length);
- const scope=[base.note,base.mode==='choose'?foundation.note:'',c.exclusions].filter(Boolean).join(' ');
+ const scope=[base.note,base.mode==='choose'?foundation.note:'',calculationExclusions(c)].filter(Boolean).join(' ');
  return {total,groups,scope,partial:pattern.individual,area,pattern:pattern.name,base:base.name,spec:wood.name+' · '+wood.spec+'; '+(base.mode==='existing'?base.name:foundation.name)+'; '+finish.name,selection:{area,wood:wood.id,finish:finish.id,pattern:pattern.id,base:base.id,foundation:foundation.id,ownParquet:!!s.ownParquet,ownSupplies:!!s.ownSupplies}};
 }

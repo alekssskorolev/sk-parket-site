@@ -15,3 +15,7 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 
 /* Shared site logo, vertically aligned with header controls. */
 .admin-logo{display:block;width:88px;height:auto}.brand:has(.admin-logo){align-items:center;line-height:0}header{align-items:center}
+
+/* Navigation groups remain a compact tab strip on phones. */
+.nav-group{display:grid;gap:5px}.nav-group+.nav-group{margin-top:18px}.nav-group-title{font-size:11px;line-height:1.4;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 16px 7px}
+@media(max-width:850px){#navigation .nav-group{display:contents}#navigation .nav-group-title{display:none}}

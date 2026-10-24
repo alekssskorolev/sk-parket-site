@@ -75,7 +75,7 @@ function update(){
  });
 
  $('own-note').hidden=!$('own-parquet').checked&&!$('own-supplies').checked;$('own-note').textContent='Материалы заказчика отмечены и не включены в закупку. Совместимость проверим до начала работ.';
- $('base-note').textContent=r.scope;estimate={...r,range:rangeText(total),own:[$('own-parquet').checked?'паркет':'',$('own-supplies').checked?'расходные материалы':''].filter(Boolean).join(', ')};
+ $('pack-rounding-note').hidden=!r.groups.some(g=>g.rows.some(row=>row.cost&&row.unit==='уп.'));$('base-note').textContent=r.scope;estimate={...r,range:rangeText(total),own:[$('own-parquet').checked?'паркет':'',$('own-supplies').checked?'расходные материалы':''].filter(Boolean).join(', ')};
  clearTimeout(announcementTimer);announcementTimer=setTimeout(()=>{$('estimate-announcement').textContent='Смета обновлена: '+rangeText(total)},400);
 }
 $('calculator').addEventListener('input',update);$('calculator').addEventListener('change',update);$('calculator').addEventListener('submit',e=>e.preventDefault());update();
