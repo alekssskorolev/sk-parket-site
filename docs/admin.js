@@ -77,9 +77,21 @@ async function getNotificationRegistration(){
  return notificationRegistration;
 }
 function openNotificationLeads(){window.focus();section='leads';leadFilter='active';leadSearch='';render()}
+const baseAdminTitle=document.title;let incomingAlertCount=0;
+function showIncomingAlert(count=0,test=false){
+ let box=$('incoming-alert');if(!box){box=el('section',undefined,'incoming-alert');box.id='incoming-alert';box.setAttribute('role','status');box.setAttribute('aria-live','polite');$('app').querySelector('main').prepend(box)}
+ box.replaceChildren();box.hidden=false;
+ if(!test){incomingAlertCount+=count;document.title='('+incomingAlertCount+') Новые заявки · '+baseAdminTitle}
+ const text=el('div');text.append(el('strong',test?'Проверка: оповещения внутри админки работают.':'Поступило новых заявок: '+incomingAlertCount),el('p',test?'Этот блок не зависит от разрешений браузера и настроек операционной системы.':'Откройте актуальные заявки. Оповещение останется здесь, пока вы его не скроете.'));
+ const actions=el('div',undefined,'incoming-alert-actions');
+ if(!test){const open=el('button','К новым заявкам');open.onclick=()=>{openNotificationLeads();clearIncomingAlert()};actions.append(open)}
+ const close=el('button','Скрыть','quiet');close.onclick=clearIncomingAlert;actions.append(close);box.append(text,actions);
+}
+function clearIncomingAlert(){if($('incoming-alert'))$('incoming-alert').hidden=true;incomingAlertCount=0;document.title=baseAdminTitle}
+
 if('serviceWorker'in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='sk-open-leads')openNotificationLeads()});
 async function showBrowserNotification(title,body,tag){
- const options={body,tag,data:{url:location.origin+location.pathname}};
+ const options={body,tag,renotify:true,requireInteraction:true,data:{url:location.origin+location.pathname}};
  const reg=await getNotificationRegistration();
  if(reg?.showNotification){try{await reg.showNotification(title,options);return}catch{/* Older desktop browsers can still use the window constructor. */}}
  const n=new Notification(title,options);n.onclick=()=>{n.close();openNotificationLeads()};
@@ -89,13 +101,13 @@ function notificationTools(){
  const available='Notification'in window&&isSecureContext,permission=available?Notification.permission:'unsupported';
  button.textContent=permission==='granted'?'Уведомления разрешены':permission==='denied'?'Уведомления заблокированы':permission==='unsupported'?'Уведомления недоступны':'Включить уведомления';button.disabled=permission!=='default';
  button.onclick=guarded(async()=>{const allowed=await Notification.requestPermission();if(allowed==='granted')await getNotificationRegistration();if(section==='leads')renderLeadBoard();if(allowed==='denied')toast('Уведомления заблокированы в настройках браузера.');});
- const test=el('button','Проверить уведомление','quiet notification-test');test.id='test-notifications';test.disabled=permission!=='granted';test.onclick=guarded(async()=>{try{await showBrowserNotification('SK паркет — проверка уведомлений','Это проверка. Новая заявка не создавалась.','sk-parket-notification-test');toast('Проверка отправлена браузеру. Если уведомление не появилось, проверьте настройки уведомлений браузера и устройства.')}catch{toast('Браузер не смог показать уведомление. Проверьте разрешения сайта. На iPhone может потребоваться установка сайта на экран «Домой».',true)}});
- box.append(button,test,el('span','Оповещения о новых заявках работают, пока админка открыта. Разрешение браузера не отменяет ограничения уведомлений в настройках устройства.','muted'));return box;
+ const test=el('button','Проверить уведомление','quiet notification-test');test.id='test-notifications';test.disabled=permission!=='granted';test.onclick=guarded(async()=>{try{await showBrowserNotification('SK паркет — проверка уведомлений','Это проверка. Новая заявка не создавалась.','sk-parket-notification-test');toast('Запрос на показ принят браузером. Видимость окна не подтверждена: проверьте центр уведомлений устройства, разрешение уведомлений для самого браузера и режим «Не беспокоить».')}catch{toast('Браузер не смог показать уведомление. Проверьте разрешения сайта. На iPhone может потребоваться установка сайта на экран «Домой».',true)}});
+ const localTest=el('button','Проверить оповещение в админке','quiet');localTest.id='test-in-app-alert';localTest.onclick=()=>showIncomingAlert(0,true);box.append(button,test,localTest,el('span','Оповещения о новых заявках работают, пока админка открыта. Разрешение браузера не отменяет ограничения уведомлений в настройках устройства.','muted'));return box;
 }
 async function detectNewLeads(rows){
  const latest=Math.max(0,...rows.map(x=>x.id));
  if(observedLeadId===null){observedLeadId=latest;try{if(Number(localStorage.getItem(notificationKey)||0)>latest)localStorage.setItem(notificationKey,String(latest))}catch{}return}
- const fresh=rows.filter(x=>x.id>observedLeadId&&x.status==='new');observedLeadId=Math.max(latest,observedLeadId);if(!fresh.length)return;toast('Новых заявок: '+fresh.length);
+ const fresh=rows.filter(x=>x.id>observedLeadId&&x.status==='new');observedLeadId=Math.max(latest,observedLeadId);if(!fresh.length)return;showIncomingAlert(fresh.length);toast('Новых заявок: '+fresh.length);
  if(!('Notification'in window)||Notification.permission!=='granted')return;
  const notify=async()=>{let previous=0;try{previous=Number(localStorage.getItem(notificationKey)||0)}catch{}if(latest<=previous)return;
   try{await showBrowserNotification('SK паркет — новая заявка',fresh.length===1?'Поступила новая заявка. Откройте админку.':'Поступило новых заявок: '+fresh.length+'. Откройте админку.','sk-parket-new-leads');try{localStorage.setItem(notificationKey,String(latest))}catch{}}

@@ -35,3 +35,8 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 /* Selection must never change a navigation button's dimensions. */
 #navigation button,#navigation button.active{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
 .notification-test{white-space:nowrap}
+
+/* Persistent in-page fallback; independent of system notification permissions. */
+.incoming-alert{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;margin:0 0 24px;border:1px solid #96badb;border-left:5px solid #16649f;border-radius:10px;background:#eaf4ff;color:#223541}
+.incoming-alert[hidden]{display:none}.incoming-alert strong{font-weight:600}.incoming-alert p{margin:6px 0 0;line-height:1.5}.incoming-alert-actions{display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+@media(max-width:700px){.incoming-alert{align-items:flex-start;flex-direction:column}.incoming-alert-actions{width:100%}.incoming-alert-actions button{flex:1}}
