@@ -31,3 +31,7 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 @media(min-width:851px){#navigation .nav-group+.nav-group{margin-top:22px;padding-top:18px;border-top:1px solid #dce3e9}}
 @media(max-width:850px){#navigation{gap:8px;padding:2px 0 8px}#navigation button{width:auto;flex:0 0 auto;min-height:44px;padding:10px 14px}#navigation button:after{display:none}#navigation .nav-group-title{display:none}}
 @media(prefers-reduced-motion:reduce){#navigation button{transition:none}}
+
+/* Selection must never change a navigation button's dimensions. */
+#navigation button,#navigation button.active{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+.notification-test{white-space:nowrap}

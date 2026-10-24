@@ -105,7 +105,7 @@ const server=http.createServer({maxHeaderSize:16384},async(req,res)=>{
   }
   const pm=p.match(/^\/api\/admin\/photos\/(\d+)$/);if(pm&&req.method==='GET'){auth(req);const photo=db.prepare('SELECT content,mime FROM photos WHERE id=?').get(Number(pm[1]));if(!photo)fail(404,'Фото не найдено');res.writeHead(200,{'Content-Type':photo.mime,'Cache-Control':'no-store','Content-Disposition':'inline'});return res.end(Buffer.from(photo.content))}
   if(p==='/health'&&req.method==='GET')return send(200,{ok:true});
-  const staticFiles={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/admin.html':'admin.html','/site.js':'site.js','/admin.js':'admin.js','/admin.css':'admin.css','/engine.js':'engine.js','/lead-export.js':'lead-export.js','/privacy':'privacy.html','/consent':'consent.html'};
+  const staticFiles={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/admin.html':'admin.html','/site.js':'site.js','/admin.js':'admin.js','/admin.css':'admin.css','/notifications-sw.js':'notifications-sw.js','/engine.js':'engine.js','/lead-export.js':'lead-export.js','/privacy':'privacy.html','/consent':'consent.html'};
   const f=staticFiles[p];if(!f||!['GET','HEAD'].includes(req.method))fail(404,'Не найдено');
   const ext=path.extname(f),types={'.html':'text/html','.js':'text/javascript','.css':'text/css'};const content=readFileSync(path.join(root,'public',f));
   res.writeHead(200,{'Content-Type':types[ext]+'; charset=utf-8','Cache-Control':'no-store',...(p.includes('admin')?{'X-Robots-Tag':'noindex, nofollow'}:{})});res.end(req.method==='HEAD'?undefined:content);

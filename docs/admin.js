@@ -16,7 +16,7 @@ async function start(){await load();$('login').hidden=true;$('app').hidden=false
 $('login-form').addEventListener('submit',async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const s=await api('/api/login','POST',{password:$('password').value});$('password').value='';csrf=s.csrf;$('login-error').textContent='';await start()}catch(e){$('login-error').textContent=e.message}finally{b.disabled=false}});
 $('admin-brand').onclick=e=>{e.preventDefault();location.reload()};
 $('logout').textContent='К сайту';$('logout').onclick=()=>{if(!dirty||confirm('Уйти без сохранения черновика?'))location.href='./index.html'};
-for(const [heading,ids] of [['Заявки',['leads']],['Цены и материалы',['woods','finishes','bases','foundations','patterns','items']],['Настройки расчёта',['rules','history']]]){const group=el('div',undefined,'nav-group');group.append(el('h2',heading,'nav-group-title'));for(const id of ids){const b=el('button',labels[id]);b.dataset.section=id;b.onclick=()=>{section=id;if(id==='leads'){leadFilter='active';leadSearch=''}render()};group.append(b)}$('navigation').append(group)}
+for(const [heading,ids] of [['Заявки',['leads']],['Цены и материалы',['woods','finishes','bases','foundations','patterns','items']],['Настройки расчёта',['rules','history']]]){const group=el('div',undefined,'nav-group');group.append(el('h2',heading,'nav-group-title'));for(const id of ids){const b=el('button',labels[id]);b.dataset.section=id;b.title=labels[id];b.onclick=()=>{section=id;if(id==='leads'){leadFilter='active';leadSearch=''}render()};group.append(b)}$('navigation').append(group)}
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
 function field(parent,label,value,type='text',hint=''){const l=el('label',label),i=el(type==='textarea'?'textarea':'input');if(type!=='textarea')i.type=type;i.value=value??'';if(type==='number'){i.min='0';i.step='any'}l.append(i);if(hint)l.append(el('small',hint));parent.append(l);return i}
 function select(parent,label,value,options){const l=el('label',label),s=el('select');for(const [v,n] of options){const o=el('option',n);o.value=v;s.append(o)}s.value=value;l.append(s);parent.append(l);return s}
@@ -65,12 +65,47 @@ function history(){const p=$('content');for(const v of state.history){const d=el
 const statusLabel={new:'Новая',progress:'В работе',closed:'Закрыта'};
 let observedLeadId=null;
 async function refreshCount(){if(!csrf)return;const r=await api('/api/admin/leads');await detectNewLeads(r.leads);document.querySelector('[data-section=leads]').textContent='Заявки'+(r.newCount?' · '+r.newCount:'');return r}
-const notificationKey='sk-parket-last-alert-id';
-function notificationTools(){const box=el('div',undefined,'notification-tools'),button=el('button',undefined,'quiet');button.id='enable-notifications';const available='Notification'in window&&isSecureContext,permission=available?Notification.permission:'unsupported';button.textContent=permission==='granted'?'Уведомления включены':permission==='denied'?'Уведомления заблокированы':permission==='unsupported'?'Уведомления недоступны':'Включить уведомления';button.disabled=permission!=='default';button.onclick=guarded(async()=>{await Notification.requestPermission();if(section==='leads')renderLeadBoard();if(Notification.permission==='denied')toast('Уведомления заблокированы в настройках браузера.');});box.append(button,el('span','Работают, пока админка открыта. Закрытая страница уведомления не получает.','muted'));return box}
-async function detectNewLeads(rows){const latest=Math.max(0,...rows.map(x=>x.id));if(observedLeadId===null){observedLeadId=latest;return}const fresh=rows.filter(x=>x.id>observedLeadId&&x.status==='new');observedLeadId=Math.max(latest,observedLeadId);if(!fresh.length)return;toast('Новых заявок: '+fresh.length);if(!('Notification'in window)||Notification.permission!=='granted')return;const notify=()=>{let previous=0;try{previous=Number(localStorage.getItem(notificationKey)||0)}catch{}if(latest<=previous)return;try{const n=new Notification('SK паркет — новая заявка',{body:fresh.length===1?'Поступила новая заявка. Откройте админку.':'Поступило новых заявок: '+fresh.length+'. Откройте админку.',tag:'sk-parket-new-leads'});n.onclick=()=>{n.close();window.focus();section='leads';leadFilter='active';leadSearch='';render()};try{localStorage.setItem(notificationKey,String(latest))}catch{}}catch{toast('Новая заявка получена. Браузер не смог показать системное уведомление.')}};if(navigator.locks)await navigator.locks.request('sk-parket-lead-alert',notify);else notify()}
+const notificationKey='sk-parket-last-alert-id:'+new URL('./',import.meta.url).pathname;
+let notificationRegistration=null;
+async function getNotificationRegistration(){
+ if(!('serviceWorker'in navigator)||!isSecureContext)return null;
+ if(!notificationRegistration)notificationRegistration=(async()=>{
+  const reg=await navigator.serviceWorker.register(new URL('./notifications-sw.js',import.meta.url));
+  if(!reg.active){const worker=reg.installing||reg.waiting;if(worker)await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Не удалось запустить уведомления')),8000);const changed=()=>{if(worker.state==='activated'){clearTimeout(timer);worker.removeEventListener('statechange',changed);resolve()}else if(worker.state==='redundant'){clearTimeout(timer);worker.removeEventListener('statechange',changed);reject(Error('Уведомления недоступны'))}};worker.addEventListener('statechange',changed);changed()})}
+  return reg;
+ })().catch(()=>{notificationRegistration=null;return null});
+ return notificationRegistration;
+}
+function openNotificationLeads(){window.focus();section='leads';leadFilter='active';leadSearch='';render()}
+if('serviceWorker'in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='sk-open-leads')openNotificationLeads()});
+async function showBrowserNotification(title,body,tag){
+ const options={body,tag,data:{url:location.origin+location.pathname}};
+ const reg=await getNotificationRegistration();
+ if(reg?.showNotification){try{await reg.showNotification(title,options);return}catch{/* Older desktop browsers can still use the window constructor. */}}
+ const n=new Notification(title,options);n.onclick=()=>{n.close();openNotificationLeads()};
+}
+function notificationTools(){
+ const box=el('div',undefined,'notification-tools'),button=el('button',undefined,'quiet');button.id='enable-notifications';
+ const available='Notification'in window&&isSecureContext,permission=available?Notification.permission:'unsupported';
+ button.textContent=permission==='granted'?'Уведомления разрешены':permission==='denied'?'Уведомления заблокированы':permission==='unsupported'?'Уведомления недоступны':'Включить уведомления';button.disabled=permission!=='default';
+ button.onclick=guarded(async()=>{const allowed=await Notification.requestPermission();if(allowed==='granted')await getNotificationRegistration();if(section==='leads')renderLeadBoard();if(allowed==='denied')toast('Уведомления заблокированы в настройках браузера.');});
+ const test=el('button','Проверить уведомление','quiet notification-test');test.id='test-notifications';test.disabled=permission!=='granted';test.onclick=guarded(async()=>{try{await showBrowserNotification('SK паркет — проверка уведомлений','Это проверка. Новая заявка не создавалась.','sk-parket-notification-test');toast('Проверка отправлена браузеру. Если уведомление не появилось, проверьте настройки уведомлений браузера и устройства.')}catch{toast('Браузер не смог показать уведомление. Проверьте разрешения сайта. На iPhone может потребоваться установка сайта на экран «Домой».',true)}});
+ box.append(button,test,el('span','Оповещения о новых заявках работают, пока админка открыта. Разрешение браузера не отменяет ограничения уведомлений в настройках устройства.','muted'));return box;
+}
+async function detectNewLeads(rows){
+ const latest=Math.max(0,...rows.map(x=>x.id));
+ if(observedLeadId===null){observedLeadId=latest;try{if(Number(localStorage.getItem(notificationKey)||0)>latest)localStorage.setItem(notificationKey,String(latest))}catch{}return}
+ const fresh=rows.filter(x=>x.id>observedLeadId&&x.status==='new');observedLeadId=Math.max(latest,observedLeadId);if(!fresh.length)return;toast('Новых заявок: '+fresh.length);
+ if(!('Notification'in window)||Notification.permission!=='granted')return;
+ const notify=async()=>{let previous=0;try{previous=Number(localStorage.getItem(notificationKey)||0)}catch{}if(latest<=previous)return;
+  try{await showBrowserNotification('SK паркет — новая заявка',fresh.length===1?'Поступила новая заявка. Откройте админку.':'Поступило новых заявок: '+fresh.length+'. Откройте админку.','sk-parket-new-leads');try{localStorage.setItem(notificationKey,String(latest))}catch{}}
+  catch{toast('Новая заявка получена. Системное уведомление не показано — нажмите «Проверить уведомление» и проверьте настройки браузера.',true)}
+ };
+ if(navigator.locks)await navigator.locks.request(notificationKey,notify);else await notify();
+}
 let leadFilter='active',leadSearch='',leadRows=[],leadLoading=false;
 let leadRefreshAgain=false;
-async function showLeads(){if(leadLoading){leadRefreshAgain=true;return}leadLoading=true;try{const rows=[];let before=0;do{const data=await api('/api/admin/leads'+(before?'?before='+before:''));rows.push(...data.leads);before=data.next;}while(before);const changed=JSON.stringify(rows)!==JSON.stringify(leadRows);leadRows=rows;leadPage={next:null};await detectNewLeads(rows);document.querySelector('[data-section=leads]').textContent='Заявки'+(rows.filter(x=>x.status==='new').length?' · '+rows.filter(x=>x.status==='new').length:'');if(section==='leads'){if(!$('lead-grid'))renderLeadBoard();else if(changed)updateLeadBoard()}}catch(e){toast(e.message,true)}finally{leadLoading=false;if(leadRefreshAgain){leadRefreshAgain=false;queueMicrotask(guarded(showLeads))}}}
+async function showLeads(){if(leadLoading){leadRefreshAgain=true;return}leadLoading=true;try{const rows=[];let before=0;do{const data=await api('/api/admin/leads'+(before?'?before='+before:''));rows.push(...data.leads);before=data.next;}while(before);const changed=JSON.stringify(rows)!==JSON.stringify(leadRows);leadRows=rows;leadPage={next:null};document.querySelector('[data-section=leads]').textContent='Заявки'+(rows.filter(x=>x.status==='new').length?' · '+rows.filter(x=>x.status==='new').length:'');if(section==='leads'){if(!$('lead-grid'))renderLeadBoard();else if(changed)updateLeadBoard()}await detectNewLeads(rows)}catch(e){toast(e.message,true)}finally{leadLoading=false;if(leadRefreshAgain){leadRefreshAgain=false;queueMicrotask(guarded(showLeads))}}}
 function leadCounts(){const counts={all:leadRows.length,new:0,progress:0,closed:0};for(const x of leadRows)counts[x.status]++;counts.active=counts.new+counts.progress;return counts}
 function updateLeadBoard(){const counts=leadCounts();for(const b of document.querySelectorAll('[data-lead-count]'))b.querySelector('strong').textContent=String(counts[b.dataset.leadCount]);for(const b of document.querySelectorAll('[data-lead-filter]'))b.textContent=b.dataset.filterLabel+' · '+counts[b.dataset.leadFilter];renderLeadCards()}
 

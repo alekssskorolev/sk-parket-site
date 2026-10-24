@@ -1,12 +1,12 @@
 import {mkdirSync,readFileSync,writeFileSync,copyFileSync} from 'node:fs';
 const dir=new URL('../docs/',import.meta.url),pub=new URL('../public/',import.meta.url);mkdirSync(dir,{recursive:true});
-for(const f of ['index.html','admin.html','admin.css','site.js','admin.js','engine.js','lead-export.js','privacy.html','consent.html']){
+for(const f of ['index.html','admin.html','admin.css','site.js','admin.js','engine.js','lead-export.js','privacy.html','consent.html','notifications-sw.js']){
  let s=readFileSync(new URL(f,pub),'utf8');
  if(f.endsWith('.html')){
   s=s.replaceAll('href="/"','href="./index.html"').replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('href="/admin.css"','href="./admin.css"').replaceAll('src="/site.js"','src="./site.js"').replaceAll('src="/admin.js"','src="./admin.js"');
   s=s.replace('</head>','<meta name="robots" content="noindex,nofollow"></head>');
  }
- if(f.endsWith('.js')&&!['engine.js','lead-export.js'].includes(f))s="import './demo-api.js';\n"+s.replaceAll("from '/engine.js'","from './engine.js'").replaceAll("from '/lead-export.js'","from './lead-export.js'");
+ if(f.endsWith('.js')&&!['engine.js','lead-export.js','notifications-sw.js'].includes(f))s="import './demo-api.js';\n"+s.replaceAll("from '/engine.js'","from './engine.js'").replaceAll("from '/lead-export.js'","from './lead-export.js'");
  if(f==='site.js'){
   s=s.replace("Ваша заявка отправлена. Мастер свяжется с вами в ближайшее время", "Ваша заявка сохранена в этом браузере. Отправка мастеру пока не подключена.");
   s += "\naddEventListener('storage',e=>{if(e.key==='sk-parket-pages-demo-v1')refreshConfig()});addEventListener('sk-demo-update',refreshConfig);\n";
