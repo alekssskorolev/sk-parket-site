@@ -1,0 +1,11 @@
+{
+  "httpMethod": "POST",
+  "queryStringParameters": {
+    "route": "/api/test-leads"
+  },
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": "{\"name\": \"Тестовая заявка\", \"phone\": \"70000000000\", \"comment\": \"Проверка API. Вымышленные данные.\", \"consent\": true, \"photos\": [], \"version\": 1, \"selection\": {\"area\": 35, \"wood\": \"natur\", \"finish\": \"eco\", \"pattern\": \"herringbone\", \"base\": \"screed\", \"foundation\": \"plywood\", \"ownParquet\": false, \"ownSupplies\": false}}",
+  "isBase64Encoded": false
+}

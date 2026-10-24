@@ -1,0 +1,385 @@
+{
+  "schema": 1,
+  "demo": false,
+  "note": "Ориентировочный расчёт. Окончательная стоимость согласуется после осмотра объекта. Цены материалов уточняются при составлении сметы.",
+  "exclusions": "В расчёт входят выбранные материалы и перечисленные работы. Демонтаж старого покрытия, ремонт и выравнивание основания, доставка, подъём, плинтусы и вывоз мусора рассчитываются отдельно — если они нужны.",
+  "margins": {
+    "workLow": 10,
+    "workHigh": 10,
+    "materialLow": 7,
+    "materialHigh": 10
+  },
+  "defaults": {
+    "woods": "natur",
+    "finishes": "eco",
+    "patterns": "herringbone",
+    "bases": "screed",
+    "foundations": "plywood"
+  },
+  "woods": [
+    {
+      "id": "natur",
+      "name": "Дуб · натур",
+      "active": true,
+      "note": "",
+      "spec": "280 × 70 мм",
+      "price": 2750
+    },
+    {
+      "id": "rustic",
+      "name": "Дуб · рустик",
+      "active": true,
+      "note": "",
+      "spec": "210 × 70 мм",
+      "price": 2300
+    },
+    {
+      "id": "radial",
+      "name": "Дуб · радиальный",
+      "active": true,
+      "note": "",
+      "spec": "420 × 70 мм",
+      "price": 6000
+    }
+  ],
+  "finishes": [
+    {
+      "id": "eco",
+      "name": "Berger Eco Gold · 1-компонентный",
+      "active": true,
+      "note": "",
+      "spec": "3 слоя",
+      "price": 21500,
+      "packSize": 5,
+      "coverage": 16
+    },
+    {
+      "id": "premium",
+      "name": "Berger · 2-компонентный",
+      "active": true,
+      "note": "",
+      "spec": "3 слоя; модель уточняется",
+      "price": 34000,
+      "packSize": 5.5,
+      "coverage": 17.6
+    }
+  ],
+  "patterns": [
+    {
+      "id": "straight",
+      "name": "Разбежка",
+      "active": true,
+      "note": "Прямые ряды со смещением",
+      "price": 1000,
+      "waste": 7,
+      "visual": "straight",
+      "individual": false
+    },
+    {
+      "id": "herringbone",
+      "name": "Ёлка",
+      "active": true,
+      "note": "Плашки соединяются под углом",
+      "price": 1300,
+      "waste": 17,
+      "visual": "herringbone",
+      "individual": false
+    },
+    {
+      "id": "checker",
+      "name": "Шашка",
+      "active": true,
+      "note": "Квадраты из параллельных плашек",
+      "price": 1100,
+      "waste": 10,
+      "visual": "checker",
+      "individual": false
+    },
+    {
+      "id": "custom",
+      "name": "Индивидуальный рисунок",
+      "active": true,
+      "note": "Стоимость паркета и укладки определим отдельно",
+      "price": 1500,
+      "waste": 0,
+      "visual": "custom",
+      "individual": true
+    },
+    {
+      "id": "pattern-undecided",
+      "name": "Пока не определился",
+      "active": true,
+      "note": "Поможем выбрать рисунок. Паркет и укладку оценим после выбора.",
+      "price": 1000,
+      "waste": 7,
+      "visual": "unknown",
+      "individual": true
+    }
+  ],
+  "bases": [
+    {
+      "id": "screed",
+      "name": "Стяжка или бетон",
+      "active": true,
+      "note": "Пригодность стяжки проверим при осмотре.",
+      "mode": "choose",
+      "recipe": [
+        "prime-work",
+        "primer"
+      ]
+    },
+    {
+      "id": "ready",
+      "name": "Фанера уже уложена",
+      "active": true,
+      "note": "Новую фанеру и монтаж не считаем. Состояние и крепление проверим на объекте.",
+      "mode": "existing",
+      "recipe": [
+        "ply-sand",
+        "hardware"
+      ]
+    },
+    {
+      "id": "old",
+      "name": "Старое покрытие",
+      "active": true,
+      "note": "Условный расчёт нового пола. Демонтаж и ремонт основания не включены.",
+      "mode": "choose",
+      "recipe": [
+        "prime-work",
+        "primer"
+      ]
+    },
+    {
+      "id": "unknown",
+      "name": "Не знаю",
+      "active": true,
+      "note": "Основание неизвестно: показан условный сценарий нового пола.",
+      "mode": "choose",
+      "recipe": [
+        "prime-work",
+        "primer"
+      ]
+    }
+  ],
+  "foundations": [
+    {
+      "id": "plywood",
+      "name": "Новая фанера 12 мм",
+      "active": true,
+      "note": "Способ крепления и пригодность основания проверим на объекте.",
+      "recipe": [
+        "ply-sheet",
+        "ply-mount",
+        "ply-sand",
+        "ply-glue",
+        "hardware"
+      ]
+    },
+    {
+      "id": "direct",
+      "name": "На стяжку без фанеры",
+      "active": true,
+      "note": "Прямая укладка возможна только после проверки стяжки и совместимости системы. Ставка укладки условная.",
+      "recipe": []
+    }
+  ],
+  "items": [
+    {
+      "id": "prime-work",
+      "name": "Грунтование стяжки",
+      "price": 125,
+      "kind": "work",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "base",
+      "owner": "none",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "primer",
+      "name": "Грунт основания · расчётный резерв",
+      "price": 270,
+      "kind": "material",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "chem",
+      "owner": "chem",
+      "spec": "Марку и расход уточним",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "ply-sheet",
+      "name": "Фанера ФК · 12 мм",
+      "price": 1500,
+      "kind": "material",
+      "unit": "sheet",
+      "consumption": 0.4299919376511691,
+      "group": "base",
+      "owner": "none",
+      "spec": "1 525 × 1 525 мм",
+      "waste": 10,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "ply-mount",
+      "name": "Монтаж фанеры",
+      "price": 425,
+      "kind": "work",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "base",
+      "owner": "none",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "ply-sand",
+      "name": "Шлифовка фанеры",
+      "price": 100,
+      "kind": "work",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "base",
+      "owner": "none",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "ply-glue",
+      "name": "Клей под фанеру · Kesta",
+      "price": 6500,
+      "kind": "material",
+      "unit": "pack",
+      "consumption": 0.04,
+      "group": "chem",
+      "owner": "chem",
+      "spec": "18 кг · на 25 м²",
+      "waste": 0,
+      "active": true,
+      "note": "",
+      "packSize": 18,
+      "packUnit": "кг"
+    },
+    {
+      "id": "hardware",
+      "name": "Крепёж",
+      "price": 85,
+      "kind": "material",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "chem",
+      "owner": "chem",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "glue",
+      "name": "Клей для паркета · Berger M1X",
+      "price": 10000,
+      "kind": "material",
+      "unit": "pack",
+      "consumption": 0.17142857142857143,
+      "group": "chem",
+      "owner": "chem",
+      "spec": "7 кг · расход 1,2 кг/м²",
+      "waste": 0,
+      "active": true,
+      "note": "",
+      "packSize": 7,
+      "packUnit": "кг"
+    },
+    {
+      "id": "putty",
+      "name": "Шпаклёвочный состав · Berger",
+      "price": 14500,
+      "kind": "material",
+      "unit": "pack",
+      "consumption": 0.02,
+      "group": "chem",
+      "owner": "chem",
+      "spec": "5 л · на 50 м²",
+      "waste": 0,
+      "active": true,
+      "note": "",
+      "packSize": 5,
+      "packUnit": "л"
+    },
+    {
+      "id": "abrasives",
+      "name": "Шлифматериалы",
+      "price": 150,
+      "kind": "material",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "chem",
+      "owner": "none",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "sand-work",
+      "name": "Шлифовка нового паркета",
+      "price": 650,
+      "kind": "work",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "work",
+      "owner": "none",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "putty-work",
+      "name": "Шпаклевание паркета",
+      "price": 100,
+      "kind": "work",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "work",
+      "owner": "none",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    },
+    {
+      "id": "lac-work",
+      "name": "Покрытие лаком · 3 слоя",
+      "price": 300,
+      "kind": "work",
+      "unit": "m2",
+      "consumption": 1,
+      "group": "work",
+      "owner": "none",
+      "spec": "",
+      "waste": 0,
+      "active": true,
+      "note": ""
+    }
+  ],
+  "common": [
+    "glue",
+    "putty",
+    "abrasives",
+    "sand-work",
+    "putty-work",
+    "lac-work"
+  ]
+}
