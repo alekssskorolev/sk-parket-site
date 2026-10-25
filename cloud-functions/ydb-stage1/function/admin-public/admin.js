@@ -81,10 +81,10 @@ function showIncomingAlert(count=0,test=false){
  let box=$('incoming-alert');if(!box){box=el('section',undefined,'incoming-alert');box.id='incoming-alert';box.setAttribute('role','status');box.setAttribute('aria-live','polite');$('app').querySelector('main').prepend(box)}
  box.replaceChildren();box.hidden=false;
  if(!test){incomingAlertCount+=count;document.title='('+incomingAlertCount+') Новые заявки · '+baseAdminTitle}
- const text=el('div');text.append(el('strong',test?'Проверка: оповещения внутри админки работают.':'Поступило новых заявок: '+incomingAlertCount),el('p',test?'Этот блок не зависит от разрешений браузера и настроек операционной системы.':'Откройте актуальные заявки. Оповещение останется здесь, пока вы его не скроете.'));
+ const text=el('div',undefined,'incoming-alert-text'),dot=el('span','●','incoming-alert-dot');dot.setAttribute('aria-hidden','true');text.append(dot,el('strong',test?'Оповещения работают':'Новые заявки: '+incomingAlertCount));
  const actions=el('div',undefined,'incoming-alert-actions');
- if(!test){const open=el('button','К новым заявкам');open.onclick=()=>{openNotificationLeads();clearIncomingAlert()};actions.append(open)}
- const close=el('button','Скрыть','quiet');close.onclick=clearIncomingAlert;actions.append(close);box.append(text,actions);
+ if(!test){const open=el('button','Открыть');open.setAttribute('aria-label','Открыть новые заявки');open.onclick=()=>{openNotificationLeads();clearIncomingAlert()};actions.append(open)}
+ const close=el('button','×','quiet incoming-alert-close');close.setAttribute('aria-label','Скрыть оповещение');close.title='Скрыть оповещение';close.onclick=clearIncomingAlert;actions.append(close);box.append(text,actions);
 }
 function clearIncomingAlert(){if($('incoming-alert'))$('incoming-alert').hidden=true;incomingAlertCount=0;document.title=baseAdminTitle}
 

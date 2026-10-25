@@ -2,6 +2,7 @@ import {request} from './api.js';
 import {calculate} from './engine.js';
 
 const $=id=>document.getElementById(id);
+$('copyright-year').textContent=String(new Date().getFullYear());
 // Logo always goes to the page's actual top, including the prototype notice.
 function scrollPageToTop(){$('nav').classList.remove('open');$('menu').setAttribute('aria-expanded','false');const target=$('page-top');target.tabIndex=-1;target.focus({preventScroll:true});requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})))}
 document.querySelectorAll('a[href="#page-top"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();scrollPageToTop()}));
@@ -30,7 +31,7 @@ function applyConfig(data){const initial=!publicState,previous=publicState;publi
  $('contact-form').querySelector('button[type=submit]').disabled=submitting||!data.leadsEnabled;
  for(const id of ['client-name','phone','comment','consent'])$(id).disabled=submitting||!data.leadsEnabled;
  $('floor-photo-input').disabled=true;document.querySelector('.floor-photos').hidden=true;
- $('launch-notice').hidden=false;$('launch-notice').textContent=data.leadsEnabled?'Цены загружаются из общей базы. Заявки сохраняются в облаке.':'Калькулятор подключён к общей базе. Форма временно недоступна. Для связи: +7 911 798-23-06.';
+ $('launch-notice').hidden=true;$('launch-notice').textContent='';
  $('lead-readiness').hidden=data.leadsEnabled;$('lead-readiness').textContent=data.leadsEnabled?'Нажимая кнопку, вы отправляете заявку мастеру. Итоговую стоимость согласуем после осмотра.':'Форма временно недоступна. Позвоните: +7 911 798-23-06 или напишите на skparket@bk.ru.';
  update();
  if(previous&&previous.version!==data.version&&!$('contact-form').classList.contains('submitted')){setSummary();$('form-status').textContent='Цены обновились. При необходимости заново приложите расчёт через кнопку «Обсудить смету». Окончательная смета — после осмотра.';}
