@@ -1,14 +1,18 @@
 'use strict';
 const {randomBytes,createHash}=require('node:crypto');
+const https=require('node:https');
+const telegramAgent=new https.Agent({keepAlive:true,maxSockets:4});
+// Explicit IPv4 avoids Node 22 fetch/IPv6 stalls on serverless egress. TLS hostname verification stays enabled.
+function telegramFetch(url,options){return new Promise((resolve,reject)=>{const req=https.request(url,{method:'POST',headers:options.headers,signal:options.signal,family:4,agent:telegramAgent},res=>{const chunks=[];let size=0;res.on('data',chunk=>{size+=chunk.length;if(size>2097152){res.destroy();req.destroy();reject(Error('Response too large'));return}chunks.push(chunk)});res.on('error',reject);res.on('end',()=>resolve({ok:res.statusCode>=200&&res.statusCode<300,status:res.statusCode,json:async()=>JSON.parse(Buffer.concat(chunks).toString('utf8'))}))});req.on('error',reject);req.end(options.body)})}
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const fail=(status,message)=>{throw Object.assign(Error(message),{status,publicError:true})};
 // Timer invocations are raw, authenticated platform events, never HTTP/gateway requests.
 function isTimerEvent(e){return !e.httpMethod&&!e.headers&&!e.path&&Array.isArray(e.messages)&&e.messages.length===1&&e.messages[0]?.event_metadata?.event_type==='yandex.cloud.events.serverless.triggers.TimerMessage'&&e.messages[0]?.event_metadata?.folder_id==='b1g5jvictf4s63dq76k4'}
-function createTelegram({storage,env=process.env,fetchImpl=fetch,now=()=>Date.now()}){
+function createTelegram({storage,env=process.env,fetchImpl=telegramFetch,now=()=>Date.now()}){
  const ready=()=>typeof env.TELEGRAM_BOT_TOKEN==='string'&&/^\d+:[A-Za-z0-9_-]{20,}$/.test(env.TELEGRAM_BOT_TOKEN);
  async function call(method,data={}){
   if(!ready())fail(503,'Токен Telegram не настроен в Lockbox');
-  let r,b;try{r=await fetchImpl('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(4500)});try{b=await r.json()}catch{fail(503,'Telegram вернул неожиданный ответ (HTTP '+r.status+').')}}catch(e){if(e.publicError)throw e;const codes=[e.cause?.code,...(e.cause?.errors||[]).map(x=>x.code)].filter(x=>typeof x==='string'&&/^[A-Z_]{2,40}$/.test(x));const reason=e.name==='TimeoutError'?'тайм-аут':codes.join(', ')||'сетевая ошибка';fail(503,'Соединение с Telegram недоступно ('+reason+'). Повторите позже.');}
+  let r,b;try{r=await fetchImpl('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(4500)});try{b=await r.json()}catch{fail(503,'Telegram вернул неожиданный ответ (HTTP '+r.status+').')}}catch(e){if(e.publicError)throw e;const codes=[e.code,e.cause?.code,...(e.cause?.errors||[]).map(x=>x.code)].filter(x=>typeof x==='string'&&/^[A-Z_]{2,40}$/.test(x));const reason=e.name==='TimeoutError'||e.name==='AbortError'?'тайм-аут':codes.join(', ')||'сетевая ошибка';fail(503,'Соединение с Telegram недоступно ('+reason+'). Повторите позже.');}
   // Never expose Telegram's raw errors, request URLs, update payloads or credentials.
   if(!r.ok||b.ok!==true){const error=Object.assign(Error(b.error_code===403?'Бот не может написать в этот чат. Разблокируйте его и нажмите «Старт».':'Telegram отклонил запрос. Проверьте токен и повторите позже.'),{status:503,publicError:true});if(b.error_code===429)error.retryAfter=Math.min(86400,Math.max(60,Number(b.parameters?.retry_after)||60));throw error}
   return b.result;
