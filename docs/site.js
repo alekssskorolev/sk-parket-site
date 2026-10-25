@@ -1,4 +1,4 @@
-import './demo-api.js';
+import {request} from './api.js';
 import {calculate} from './engine.js';
 
 const $=id=>document.getElementById(id);
@@ -7,6 +7,8 @@ function scrollPageToTop(){$('nav').classList.remove('open');$('menu').setAttrib
 document.querySelectorAll('a[href="#page-top"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();scrollPageToTop()}));
 
 let floorPhotos=[];
+let submitting=false,pendingRequestId=null;
+$('contact-form').addEventListener('input',()=>{if(!submitting)pendingRequestId=null});
 function renderFloorPhotos(){const list=$('photo-previews');list.replaceChildren();floorPhotos.forEach((item,index)=>{const li=document.createElement('li');li.className='photo-preview';const img=document.createElement('img');img.src=item.url;img.alt='Фотография пола '+(index+1);img.addEventListener('error',()=>{const fallback=document.createElement('span');fallback.className='preview-unavailable';fallback.textContent='Фото добавлено';img.replaceWith(fallback)});const button=document.createElement('button');button.type='button';button.textContent='×';button.setAttribute('aria-label','Удалить фотографию '+(index+1));button.addEventListener('click',()=>{URL.revokeObjectURL(item.url);floorPhotos.splice(index,1);renderFloorPhotos();$('photo-status').textContent=floorPhotos.length?'Добавлено фотографий: '+floorPhotos.length+'.':'';});const name=document.createElement('small');name.textContent=item.file.name;name.title=item.file.name;li.append(img,button,name);list.append(li)});}
 $('floor-photo-input').addEventListener('change',e=>{let warnings=[];for(const file of e.target.files){if(!file.type.startsWith('image/')&&!/\.(heic|heif)$/i.test(file.name)){warnings.push('Можно добавить только изображения.');continue}if(file.size>10*1024*1024){warnings.push('Фото «'+file.name+'» больше 10 МБ.');continue}if(floorPhotos.some(item=>item.file.name===file.name&&item.file.size===file.size&&item.file.lastModified===file.lastModified))continue;if(floorPhotos.length>=6){warnings.push('Можно добавить не более 6 фотографий.');break}floorPhotos.push({file,url:URL.createObjectURL(file)})}e.target.value='';renderFloorPhotos();$('photo-status').textContent=(floorPhotos.length?'Добавлено фотографий: '+floorPhotos.length+'. ':'')+[...new Set(warnings)].join(' ');});
 
@@ -25,12 +27,15 @@ function applyConfig(data){const initial=!publicState,previous=publicState;publi
  const grid=document.querySelector('.pattern-card').parentElement;grid.replaceChildren();
  for(const x of c.patterns.filter(x=>x.active)){const undecided=x.visual==='unknown'||/не (?:выбр|определ)|пока не/i.test(x.name);const card=(patternTemplates[undecided?'unknown':x.visual]||patternTemplates.unknown).cloneNode(true),radio=card.querySelector('input');card.classList.toggle('pattern-undecided',undecided);radio.value=x.id;radio.checked=x.id===$('pattern').value;const strong=card.querySelector('strong');if(strong)strong.textContent=x.name;const detail=card.querySelector('.pattern-caption > span');if(detail)detail.textContent=x.note;card.querySelectorAll('img').forEach(img=>img.alt='Иллюстрация рисунка: '+x.name);radio.addEventListener('change',()=>{$('pattern').value=x.id;update()});grid.append(card)}
  updateBaseHelp();syncFoundation();updateChoiceHelp();
- $('contact-form').querySelector('button[type=submit]').disabled=!data.leadsEnabled;$('launch-notice').hidden=true;
- $('lead-readiness').hidden=data.leadsEnabled;$('lead-readiness').textContent=data.leadsEnabled?'Нажимая кнопку, вы отправляете заявку мастеру. Итоговую стоимость согласуем после осмотра.':'Приём заявок пока выключен. Перед запуском будут оформлены документы по персональным данным. Не вводите реальные контакты.';
+ $('contact-form').querySelector('button[type=submit]').disabled=submitting||!data.leadsEnabled;
+ for(const id of ['client-name','phone','comment','consent'])$(id).disabled=submitting||!data.leadsEnabled;
+ $('floor-photo-input').disabled=true;document.querySelector('.floor-photos').hidden=true;
+ $('launch-notice').hidden=false;$('launch-notice').textContent=data.leadsEnabled?'Цены загружаются из общей базы. Заявки сохраняются в облаке.':'Калькулятор подключён к общей базе. Приём заявок временно выключен: документы по персональным данным готовятся.';
+ $('lead-readiness').hidden=data.leadsEnabled;$('lead-readiness').textContent=data.leadsEnabled?'Нажимая кнопку, вы отправляете заявку мастеру. Итоговую стоимость согласуем после осмотра.':'Приём заявок пока выключен: документы по персональным данным готовятся. Реальные контакты не вводите. Фотографии и Telegram пока не подключены.';
  update();
  if(previous&&previous.version!==data.version&&!$('contact-form').classList.contains('submitted')){setSummary();$('form-status').textContent='Цены обновились. При необходимости заново приложите расчёт через кнопку «Обсудить смету». Окончательная смета — после осмотра.';}
 }
-async function refreshConfig(){try{const r=await fetch('/api/config',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();if(!publicState||publicState.version!==data.version||publicState.leadsEnabled!==data.leadsEnabled)applyConfig(data);}catch{if(!publicState){$('price').textContent='Расчёт недоступен';$('price-sub').textContent='Не удалось загрузить цены. Обновите страницу позже.';$('discuss').disabled=true;}}}
+async function refreshConfig(){try{const r=await request('/api/config',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();if(!publicState||publicState.version!==data.version||publicState.leadsEnabled!==data.leadsEnabled||publicState.consentVersion!==data.consentVersion)applyConfig(data);}catch{if(!publicState){$('price').textContent='Расчёт недоступен';$('price-sub').textContent='Не удалось загрузить цены. Обновите страницу позже.';$('discuss').disabled=true;}}}
 const range=$('area-range');
 function syncAreaRange(){const n=Number($('area').value);if(!Number.isFinite(n)||n<1||n>10000)return;const max=Math.max(200,Math.ceil(n/100)*100);range.max=max;range.value=n;range.setAttribute('aria-valuetext',n.toLocaleString('ru-RU')+' м²');$('range-max').textContent=max.toLocaleString('ru-RU')+' м²';range.style.setProperty('--range-fill',((n-1)/(max-1)*100)+'%')}
 range.addEventListener('input',()=>{$('area').value=range.value;syncAreaRange()});$('area').addEventListener('input',syncAreaRange);syncAreaRange();
@@ -85,7 +90,7 @@ let lastResultWidth=0;new ResizeObserver(entries=>{const width=entries[0].conten
 let selectedEstimate=null;
 function setSummary(summary=''){if(!summary)selectedEstimate=null;$('selected-summary').textContent=summary;$('summary-box').hidden=!summary;}
 $('remove-summary').addEventListener('click',()=>setSummary());
-function resetSubmission(){$('contact-form').classList.remove('submitted');$('callback-dialog').classList.remove('callback-success');$('form-status').textContent=''}
+function resetSubmission(){if(submitting)return;pendingRequestId=null;$('contact-form').classList.remove('submitted');$('callback-dialog').classList.remove('callback-success');$('form-status').textContent=''}
 function openCallback(summary=''){resetSubmission();setSummary(summary);$('callback-form-slot').append($('contact-form'));$('callback-dialog').showModal();document.body.classList.add('modal-open');}
 $('callback-dialog').addEventListener('close',()=>{resetSubmission();setSummary();$('form-home').append($('contact-form'));document.body.classList.remove('modal-open')});
 document.querySelectorAll('.request-call').forEach(b=>b.addEventListener('click',()=>openCallback()));
@@ -98,7 +103,26 @@ $('works-prev').onclick=()=>moveWork(-1);$('works-next').onclick=()=>moveWork(1)
 worksCards.forEach(card=>card.querySelector('.work-photo-trigger').addEventListener('click',()=>{$('work-title').textContent=card.querySelector('h3').textContent;const pair=card.querySelector('.pair').cloneNode(true);pair.classList.add('dialog-pair');$('work-detail-photos').replaceChildren(pair);$('work-detail-copy').textContent='Пока здесь заглушки. Фотографии и описание реального объекта добавим позже.';$('work-dialog').showModal()}));document.querySelectorAll('dialog').forEach(d=>{d.querySelector('.close').addEventListener('click',()=>d.close());d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}})});
 
 async function compressedPhotos(){const photos=[];for(const item of floorPhotos){let bitmap;try{bitmap=await createImageBitmap(item.file)}catch{throw Error('Не удалось прочитать фото «'+item.file.name+'». Удалите его или добавьте JPEG/PNG.')}const ratio=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*ratio);canvas.height=Math.round(bitmap.height*ratio);canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const jpeg=canvas.toDataURL('image/jpeg',.8).split(',')[1];if(jpeg.length>2800000)throw Error('Фото слишком большое. Добавьте уменьшенную копию.');photos.push({data:jpeg});}return photos;}
-$('contact-form').addEventListener('submit',async e=>{e.preventDefault();const n=$('phone').value.replace(/\D/g,''),valid=n.length===10||(n.length===11&&/^[78]/.test(n));$('phone-error').hidden=valid;$('phone').setAttribute('aria-invalid',!valid);if(!valid){$('phone').focus();return;}if(!$('consent').checked){$('form-status').textContent='Подтвердите согласие на обработку данных.';return;}const b=e.submitter||$('contact-form').querySelector('button[type=submit]');b.disabled=true;$('form-status').textContent='Отправляем…';try{const photos=selectedEstimate?await compressedPhotos():[];const response=await fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('client-name').value.trim(),phone:n,comment:$('comment').value,consent:true,website:$('website').value,...(selectedEstimate||{}),photos})});const result=await response.json();if(!response.ok){if(response.status===409)await refreshConfig();throw Error(result.error||'Не удалось отправить заявку')} $('form-status').textContent='Ваша заявка сохранена в этом браузере. Отправка мастеру пока не подключена.';$('contact-form').classList.add('submitted');$('callback-dialog').classList.add('callback-success');$('form-status').tabIndex=-1;$('form-status').focus();$('client-name').value='';$('phone').value='';$('comment').value='';$('consent').checked=true;setSummary();floorPhotos.forEach(x=>URL.revokeObjectURL(x.url));floorPhotos=[];renderFloorPhotos();}catch(e){$('form-status').textContent=e.message||'Ошибка соединения. Повторите позже.'}finally{b.disabled=!publicState?.leadsEnabled;}});
+$('contact-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(submitting)return;
+ if(!publicState?.leadsEnabled){$('form-status').textContent='Приём заявок пока выключен. Не вводите реальные контакты.';return}
+ const n=$('phone').value.replace(/\D/g,''),valid=n.length===10||(n.length===11&&/^[78]/.test(n));
+ $('phone-error').hidden=valid;$('phone').setAttribute('aria-invalid',!valid);if(!valid){$('phone').focus();return}
+ if(!$('consent').checked){$('form-status').textContent='Подтвердите согласие на обработку данных.';return}
+ pendingRequestId||=crypto.randomUUID();
+ const payload={requestId:pendingRequestId,name:$('client-name').value.trim(),phone:n,comment:$('comment').value,consent:true,consentVersion:publicState.consentVersion,website:$('website').value,...(selectedEstimate||{}),photos:[]};
+ const b=e.submitter||$('contact-form').querySelector('button[type=submit]');submitting=true;b.disabled=true;
+ for(const id of ['client-name','phone','comment','consent'])$(id).disabled=true;
+ $('form-status').textContent='Отправляем…';
+ try{
+  const response=await request('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();
+  if(!response.ok){if(response.status===409){await refreshConfig();pendingRequestId=null}throw Error(result.error||'Не удалось подтвердить сохранение заявки')}
+  if(result.ok!==true||typeof result.id!=='string')throw Error('Не удалось подтвердить сохранение. Повторите отправку.');
+  $('form-status').textContent='Заявка сохранена. Номер: '+result.id+'. Спасибо за обращение!';
+  $('contact-form').classList.add('submitted');$('callback-dialog').classList.add('callback-success');$('form-status').tabIndex=-1;$('form-status').focus();
+  $('client-name').value='';$('phone').value='';$('comment').value='';$('consent').checked=false;pendingRequestId=null;setSummary();
+ }catch(error){$('form-status').textContent=error.name==='TimeoutError'||error.name==='TypeError'?'Не удалось подтвердить сохранение. Повторите отправку: защита от дублей сохранит одну заявку.':error.message||'Ошибка соединения. Повторите отправку.'}
+ finally{submitting=false;b.disabled=!publicState?.leadsEnabled;for(const id of ['client-name','phone','comment','consent'])$(id).disabled=!publicState?.leadsEnabled}
+});
 refreshConfig();setInterval(()=>{if(document.visibilityState==='visible')refreshConfig()},60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshConfig()});
 
-addEventListener('storage',e=>{if(e.key==='sk-parket-pages-demo-v1')refreshConfig()});addEventListener('sk-demo-update',refreshConfig);

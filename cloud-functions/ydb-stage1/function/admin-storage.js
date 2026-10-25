@@ -1,5 +1,6 @@
 'use strict';
 const {TableDescription,Column,Types,TypedValues:V,TypedData,StatusCode}=require('ydb-sdk');
+const {INSERT_ORDER,insertParams}=require('./ydb-storage');
 const parse=x=>typeof x==='string'?JSON.parse(x):x;
 const rows=r=>r.resultSets?.[0]?TypedData.createNativeObjects(r.resultSets[0]):[];
 function createAdminStorage(getDriver,seed){
@@ -9,6 +10,7 @@ function createAdminStorage(getDriver,seed){
    for(const [name,cols,ttl] of [
     ['sk_admin_state',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT]]],
     ['sk_admin_sessions',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
+    ['sk_public_requests',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
     ['sk_admin_limits',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
    ]){
     try{await s.describeTable(name);continue}catch(e){if(e.constructor.status!==StatusCode.SCHEME_ERROR)throw e}
@@ -41,6 +43,24 @@ function createAdminStorage(getDriver,seed){
  function lead(x){const e=x.estimate?parse(x.estimate):null;return {...x,created:new Date(x.created).toISOString(),updated:new Date(x.updated).toISOString(),estimate:e,version:e?.priceVersion||null,photos:[]}}
  return {
   ensure,
+  lookupRequest:id=>read('sk_public_requests',id),
+  async insertLeadOnce(order,requestId,fingerprint,expires){
+   await ensure();const d=await getDriver();
+   for(let attempt=0;;attempt++)try{return await d.tableClient.withSession(async s=>{
+    const tx=await s.beginTransaction({serializableReadWrite:{}});
+    try{
+     const r=rows(await s.executeQuery('DECLARE $id AS Utf8; SELECT payload FROM sk_public_requests WHERE id=$id;',{$id:V.utf8(requestId)},{txId:tx.id}));
+     const old=r[0]?parse(r[0].payload):null;
+     if(old&&old.expires>+order.created){
+      if(old.fingerprint!==fingerprint)throw Object.assign(Error('Данные заявки изменились. Начните новую отправку.'),{status:409,publicError:true});
+      await s.commitTransaction({txId:tx.id});return {id:old.id,created:false};
+     }
+     await s.executeQuery(INSERT_ORDER,insertParams(order),{txId:tx.id});
+     await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO sk_public_requests (id,payload,expires) VALUES($id,$payload,$expires);',{$id:V.utf8(requestId),$payload:V.jsonDocument(JSON.stringify({id:order.id,fingerprint,expires})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
+     await s.commitTransaction({txId:tx.id});return {id:order.id,created:true};
+    }catch(e){await s.rollbackTransaction({txId:tx.id}).catch(()=>{});throw e}
+   })}catch(e){if(e.constructor.status!==StatusCode.ABORTED||attempt>=4)throw e}
+  },
   async state(){const p=await read('sk_admin_state','prices');return {...p,history:p.history.map(({id,created})=>({id,created}))}},
   async current(){return (await read('sk_admin_state','prices')).published},
   async changeState(revision,fn){return mutate('sk_admin_state','prices',p=>{if(p.revision!==revision){const e=Error('Данные изменились в другой вкладке. Обновите страницу.');e.status=409;throw e}const v=fn(p);v.revision++;return {value:v,result:true}})},

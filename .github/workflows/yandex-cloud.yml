@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths:
       - 'cloud-functions/ydb-stage1/**'
+      - 'web-cloud/**'
+      - 'docs/**'
+      - 'scripts/build-cloud.mjs'
       - '.github/workflows/yandex-cloud.yml'
   workflow_dispatch:
 permissions:
@@ -31,6 +34,10 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22.15.0'
+      - name: Verify reproducible cloud site
+        run: |
+          node scripts/build-cloud.mjs
+          git diff --exit-code -- docs
       - name: Install pinned dependencies and run tests
         run: |
           npm ci --prefix "$FUNCTION_DIR" --ignore-scripts --no-audit --no-fund
@@ -38,7 +45,7 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js admin-app.js admin-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js public-app.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
           cp -R "$FUNCTION_DIR/admin-public" .deploy/function/
@@ -66,6 +73,8 @@ jobs:
             YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135
             YDB_DATABASE=/ru-central1/b1giavulfpadcrjur0gm/etndibb9bo594a8l1qp5
             TEST_WRITES_ENABLED=false
+            LEADS_ENABLED=false
+            PRIVACY_OPERATOR_CONFIRMED=no
             ADMIN_ORIGIN=https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net
       - name: Verify private health endpoint without creating leads
         env:
