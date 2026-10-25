@@ -45,7 +45,7 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js admin-app.js admin-storage.js public-app.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
           cp -R "$FUNCTION_DIR/admin-public" .deploy/function/
@@ -69,6 +69,7 @@ jobs:
           logs-disabled: 'true'
           secrets: |
             ADMIN_PASSWORD=e6q7cg1917m1bgbnuion/e6qofldtgge73ciqn5nd/ADMIN_PASSWORD_V2
+            TELEGRAM_BOT_TOKEN=e6qsesqbjgppvd1u31eu/e6qovakr6rgmo5spjbop/TELEGRAM_BOT_TOKEN
           environment: |
             YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135
             YDB_DATABASE=/ru-central1/b1giavulfpadcrjur0gm/etndibb9bo594a8l1qp5

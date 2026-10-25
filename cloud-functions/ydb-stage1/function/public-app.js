@@ -12,7 +12,7 @@ function readJson(event,headers){
  let b;try{b=JSON.parse(bytes.toString())}catch{fail(400,'Неверный JSON')}
  if(!b||typeof b!=='object'||Array.isArray(b))fail(400,'Нужен JSON-объект');return b;
 }
-function createPublicHandler({storage,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
+function createPublicHandler({storage,telegram,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
  return async(event={})=>{
   const route=event.queryStringParameters?.route||event.path||event.rawPath||'/health';if(!['/api/config','/api/leads'].includes(route))return null;
   const method=String(event.httpMethod||'GET').toUpperCase(),headers=Object.fromEntries(Object.entries(event.headers||{}).map(([k,v])=>[k.toLowerCase(),String(v)]));
@@ -52,7 +52,9 @@ function createPublicHandler({storage,env=process.env,calculate,now=()=>new Date
    const current=await storage.current();let estimate=null;
    if(selection){if(b.version!==current.version)fail(409,'Цены обновились. Пересчитайте стоимость перед отправкой.');estimate={...calculate(current.config,selection),priceVersion:current.version}}
    const order={id:makeId(),created:date,name:normalized.name,phone,comment:normalized.comment,estimate,consentVersion:env.CONSENT_VERSION};
-   const saved=await storage.insertLeadOnce(order,requestId,fingerprint,+date+7*86400000);
+   const saved=await storage.insertLeadOnce(order,requestId,fingerprint,+date+7*86400000,!!telegram?.ready());
+   // Notification failure must never turn a committed application into a failed submission.
+   if(saved.created&&telegram)await telegram.flush(1).catch(()=>{});
    return reply(saved.created?201:200,{ok:true,id:saved.id,duplicate:!saved.created});
   }catch(e){const clientError=Number.isInteger(e.status)&&e.status>=400&&e.status<500;const status=e.publicError||clientError?e.status:503;return reply(status,{ok:false,error:e.publicError||clientError?e.message:'Не удалось подтвердить сохранение. Повторите отправку — повторная заявка не создастся.'})}
  };

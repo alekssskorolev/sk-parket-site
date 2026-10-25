@@ -40,3 +40,12 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 .incoming-alert{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 12px;margin:0 0 16px;border:1px solid #c8dfef;border-left:3px solid #16649f;border-radius:8px;background:#eff6fc;color:#223541}
 .incoming-alert[hidden]{display:none}.incoming-alert-text{display:flex;align-items:center;gap:8px;min-width:0;line-height:1.4}.incoming-alert strong{font-size:14px;font-weight:600}.incoming-alert-dot{font-size:12px;line-height:1;color:#1263a5;flex:none}.incoming-alert-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}.incoming-alert-actions button{min-height:44px;padding:8px 12px;line-height:1.4;font-size:14px}.incoming-alert-actions .incoming-alert-close{display:grid;place-items:center;min-width:44px;width:44px;padding:0;font-size:22px;background:transparent;border-color:transparent;color:#52636f}
 @media(max-width:700px){.incoming-alert{flex-wrap:wrap;gap:6px 10px}.incoming-alert-text{flex:1 1 140px}.incoming-alert-actions{margin-left:auto}}
+
+/* Sidebar and heading share a top grid line; alerts occupy their own full-width row. */
+@media(min-width:851px){.shell>aside,.shell>main{padding-top:32px}#navigation>.nav-group:first-child>.nav-group-title{margin-top:0;line-height:15px;min-height:35px;padding-top:5px;margin-bottom:12px}aside>.eyebrow{margin-top:0}}
+.shell>.incoming-alert{grid-column:1/-1;margin:24px 32px 0}
+.shell>.incoming-alert[hidden]{display:none}
+.telegram-tools{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;margin:0 0 18px;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:8px}
+.telegram-tools p{flex:1 1 260px;margin:0;font-size:13px;line-height:1.5}.telegram-tools a{color:var(--blue)}.telegram-tools button,.telegram-tools .telegram-open{min-height:44px}.telegram-open{display:inline-flex;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:7px;text-decoration:none}
+@media(max-width:850px){.shell>.incoming-alert{margin:16px 16px 0}.telegram-tools{padding:12px}.telegram-tools p{flex-basis:100%}}
+.telegram-tools .actions{display:flex;gap:8px;flex-wrap:wrap}

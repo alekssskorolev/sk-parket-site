@@ -11,6 +11,7 @@ function createAdminStorage(getDriver,seed){
     ['sk_admin_state',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT]]],
     ['sk_admin_sessions',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
     ['sk_public_requests',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
+    ['sk_telegram_outbox',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
     ['sk_admin_limits',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
    ]){
     try{await s.describeTable(name);continue}catch(e){if(e.constructor.status!==StatusCode.SCHEME_ERROR)throw e}
@@ -30,6 +31,7 @@ function createAdminStorage(getDriver,seed){
    try{
     const r=rows(await s.executeQuery(`DECLARE $id AS Utf8; SELECT payload FROM ${table} WHERE id=$id;`,{$id:V.utf8(id)},{txId:tx.id}));
     const change=fn(r[0]?parse(r[0].payload):null);
+    if(change.value===undefined){await s.commitTransaction({txId:tx.id});return change.result}
     if(change.value===null)await s.executeQuery(`DECLARE $id AS Utf8; DELETE FROM ${table} WHERE id=$id;`,{$id:V.utf8(id)},{txId:tx.id});
     else {const exp=table==='sk_admin_state'?'':', expires';const val=table==='sk_admin_state'?'':', $expires';
      const p={$id:V.utf8(id),$payload:V.jsonDocument(JSON.stringify(change.value))};if(exp)p.$expires=V.timestamp(new Date(change.value.expires));
@@ -44,7 +46,7 @@ function createAdminStorage(getDriver,seed){
  return {
   ensure,
   lookupRequest:id=>read('sk_public_requests',id),
-  async insertLeadOnce(order,requestId,fingerprint,expires){
+  async insertLeadOnce(order,requestId,fingerprint,expires,notify=false){
    await ensure();const d=await getDriver();
    for(let attempt=0;;attempt++)try{return await d.tableClient.withSession(async s=>{
     const tx=await s.beginTransaction({serializableReadWrite:{}});
@@ -57,10 +59,15 @@ function createAdminStorage(getDriver,seed){
      }
      await s.executeQuery(INSERT_ORDER,insertParams(order),{txId:tx.id});
      await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO sk_public_requests (id,payload,expires) VALUES($id,$payload,$expires);',{$id:V.utf8(requestId),$payload:V.jsonDocument(JSON.stringify({id:order.id,fingerprint,expires})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
+     if(notify)await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO sk_telegram_outbox(id,payload,expires) VALUES($id,$payload,$expires);',{$id:V.utf8(order.id),$payload:V.jsonDocument(JSON.stringify({expires,attempts:0,next:0,leaseUntil:0})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
      await s.commitTransaction({txId:tx.id});return {id:order.id,created:true};
     }catch(e){await s.rollbackTransaction({txId:tx.id}).catch(()=>{});throw e}
    })}catch(e){if(e.constructor.status!==StatusCode.ABORTED||attempt>=4)throw e}
   },
+  telegramSettings:()=>read('sk_admin_state','telegram'),
+  telegramChange:fn=>mutate('sk_admin_state','telegram',fn),
+  async telegramPending(){await ensure();return (await query('DECLARE $now AS Timestamp; SELECT id,payload FROM sk_telegram_outbox WHERE expires>$now ORDER BY expires ASC LIMIT 50;',{$now:V.timestamp(new Date())})).map(x=>({id:x.id,...parse(x.payload)}))},
+  telegramJob:(id,fn)=>mutate('sk_telegram_outbox',id,fn),
   async state(){const p=await read('sk_admin_state','prices');return {...p,history:p.history.map(({id,created})=>({id,created}))}},
   async current(){return (await read('sk_admin_state','prices')).published},
   async changeState(revision,fn){return mutate('sk_admin_state','prices',p=>{if(p.revision!==revision){const e=Error('Данные изменились в другой вкладке. Обновите страницу.');e.status=409;throw e}const v=fn(p);v.revision++;return {value:v,result:true}})},
@@ -75,7 +82,7 @@ function createAdminStorage(getDriver,seed){
   },
   async getLead(id){await ensure();const r=await query('DECLARE $id AS Utf8; SELECT id,created_at AS created,updated_at AS updated,name,phone,comment,status,admin_note AS note,estimate FROM orders WHERE id=$id;',{$id:V.utf8(id)});return r[0]?lead(r[0]):null},
   async updateLead(id,status,note){return query('DECLARE $id AS Utf8; DECLARE $status AS Utf8; DECLARE $note AS Utf8; DECLARE $now AS Timestamp; UPDATE orders SET status=$status,admin_note=$note,updated_at=$now WHERE id=$id;',{$id:V.utf8(id),$status:V.utf8(status),$note:V.utf8(note),$now:V.timestamp(new Date())})},
-  async deleteLead(id){return query('DECLARE $id AS Utf8; DELETE FROM orders WHERE id=$id;',{$id:V.utf8(id)})},
+  async deleteLead(id){return query('DECLARE $id AS Utf8; DELETE FROM orders WHERE id=$id; DELETE FROM sk_telegram_outbox WHERE id=$id;',{$id:V.utf8(id)})},
  };
 }
 module.exports={createAdminStorage};

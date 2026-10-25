@@ -78,7 +78,7 @@ async function getNotificationRegistration(){
 function openNotificationLeads(){window.focus();section='leads';leadFilter='active';leadSearch='';render()}
 const baseAdminTitle=document.title;let incomingAlertCount=0;
 function showIncomingAlert(count=0,test=false){
- let box=$('incoming-alert');if(!box){box=el('section',undefined,'incoming-alert');box.id='incoming-alert';box.setAttribute('role','status');box.setAttribute('aria-live','polite');$('app').querySelector('main').prepend(box)}
+ let box=$('incoming-alert');if(!box){box=el('section',undefined,'incoming-alert');box.id='incoming-alert';box.setAttribute('role','status');box.setAttribute('aria-live','polite');$('app').querySelector('.shell').prepend(box)}
  box.replaceChildren();box.hidden=false;
  if(!test){incomingAlertCount+=count;document.title='('+incomingAlertCount+') Новые заявки · '+baseAdminTitle}
  const text=el('div',undefined,'incoming-alert-text'),dot=el('span','●','incoming-alert-dot');dot.setAttribute('aria-hidden','true');text.append(dot,el('strong',test?'Оповещения работают':'Новые заявки: '+incomingAlertCount));
@@ -118,7 +118,7 @@ function leadCounts(){const counts={all:leadRows.length,new:0,progress:0,closed:
 function updateLeadBoard(){const counts=leadCounts();for(const b of document.querySelectorAll('[data-lead-count]'))b.querySelector('strong').textContent=String(counts[b.dataset.leadCount]);for(const b of document.querySelectorAll('[data-lead-filter]'))b.textContent=b.dataset.filterLabel+' · '+counts[b.dataset.leadFilter];renderLeadCards()}
 
 function renderLeadBoard(){const p=$('content');p.replaceChildren();const counts=leadCounts();
- const summary=el('div',undefined,'lead-summary');for(const [key,label] of [['new','Новые'],['progress','В работе'],['closed','Закрытые']]){const b=el('button',undefined,'summary-tile '+key+(leadFilter===key?' selected':''));b.dataset.leadCount=key;b.append(el('strong',String(counts[key])),el('span',label));b.onclick=()=>{leadFilter=key;renderLeadBoard()};summary.append(b)}p.append(summary,notificationTools());
+ const summary=el('div',undefined,'lead-summary');for(const [key,label] of [['new','Новые'],['progress','В работе'],['closed','Закрытые']]){const b=el('button',undefined,'summary-tile '+key+(leadFilter===key?' selected':''));b.dataset.leadCount=key;b.append(el('strong',String(counts[key])),el('span',label));b.onclick=()=>{leadFilter=key;renderLeadBoard()};summary.append(b)}p.append(summary,telegramTools(),notificationTools());
  const toolbar=el('div',undefined,'leads-toolbar'),tabs=el('div',undefined,'lead-filters');for(const [key,label] of [['active','Актуальные'],['all','Все'],['closed','Закрытые']]){const b=el('button',label+' · '+counts[key],'quiet'+(leadFilter===key?' selected':''));b.dataset.leadFilter=key;b.dataset.filterLabel=label;b.setAttribute('aria-pressed',String(leadFilter===key));b.onclick=()=>{leadFilter=key;renderLeadBoard()};tabs.append(b)}
  const search=el('input');search.type='search';search.placeholder='Имя, телефон или текст заявки';search.setAttribute('aria-label','Поиск заявок');search.value=leadSearch;search.oninput=()=>{leadSearch=search.value;renderLeadCards()};const runSearch=()=>{leadSearch=search.value;renderLeadCards()};search.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();runSearch()}};toolbar.append(tabs,search);p.append(toolbar,el('p','Новая — голубая · В работе — светло-жёлтая · Закрыта — светло-красная. Обновление списка каждые 30 секунд.','muted'));const grid=el('div',undefined,'lead-grid');grid.id='lead-grid';p.append(grid);renderLeadCards();}
 function renderLeadCards(){const grid=$('lead-grid');if(!grid)return;grid.replaceChildren();const rank={new:0,progress:1,closed:2};const q=leadSearch.trim().toLowerCase();const rows=leadRows.filter(x=>(leadFilter==='all'||leadFilter==='active'&&x.status!=='closed'||x.status===leadFilter)&&(!q||(x.id+' '+(x.name||'')+' '+x.phone+' '+x.comment+' '+(x.note||'')).toLowerCase().includes(q))).sort((a,b)=>rank[a.status]-rank[b.status]||new Date(b.created)-new Date(a.created)||String(b.id).localeCompare(String(a.id)));
@@ -137,3 +137,16 @@ addEventListener('sk-demo-update',scheduleLeadSync);
 addEventListener('focus',scheduleLeadSync);
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleLeadSync()});
 try{const s=await api('/api/session');csrf=s.csrf;await start()}catch{/* Login screen; no data accessible without session. */}
+
+function telegramTools(){
+ const box=el('section',undefined,'telegram-tools');box.setAttribute('aria-label','Уведомления Telegram');
+ const text=el('p','Telegram: проверяем подключение…'),actions=el('div',undefined,'actions');box.append(text,actions);
+ const post=action=>api('/api/admin/telegram','POST',{action});
+ async function refresh(){const s=await api('/api/admin/telegram');if(!box.isConnected)return;
+  text.textContent=s.connected?'Telegram @skparket_bot подключён к личному чату. В сообщениях нет контактов клиентов. В очереди: '+s.pending+'.':s.ready?'Telegram @skparket_bot: подключите личный чат. Бот должен использоваться только для уведомлений этого сайта.':'Telegram: требуется настройка токена в Lockbox.';
+  actions.replaceChildren();const pair=el('button',s.connected?'Изменить получателя':'Подключить личный чат','quiet');pair.disabled=!s.ready;
+  pair.onclick=guarded(async()=>{pair.disabled=true;try{const result=await post('pair');text.textContent='Откройте бота по ссылке и нажмите «Старт». Затем подтвердите подключение здесь. Ссылка действует 10 минут.';actions.replaceChildren();const link=el('a','Открыть @skparket_bot','telegram-open');link.href=result.url;link.target='_blank';link.rel='noopener noreferrer';const confirm=el('button','Я нажал «Старт» — проверить');confirm.id='telegram-confirm';confirm.onclick=guarded(async()=>{confirm.disabled=true;try{const r=await post('confirm');if(r.connected){await refresh();toast(r.testSent?'Чат подключён. Проверочное сообщение отправлено.':'Чат подключён. Telegram временно не принял проверочное сообщение.')}else toast(r.message)}finally{confirm.disabled=false}});actions.append(link,confirm)}finally{pair.disabled=false}});actions.append(pair);
+  if(s.connected){const test=el('button','Проверить Telegram','quiet');test.onclick=guarded(async()=>{test.disabled=true;try{await post('test');toast('Telegram принял проверочное сообщение. Проверьте личный чат с ботом.')}finally{test.disabled=false}});actions.append(test)}
+ }
+ queueMicrotask(()=>refresh().catch(()=>{text.textContent='Не удалось проверить Telegram. Обновите страницу.'}));return box;
+}

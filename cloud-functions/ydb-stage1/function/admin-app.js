@@ -10,7 +10,7 @@ const SAFE={
  'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
 };
-function createAdminHandler({storage,env=process.env,validateConfig,now=()=>Date.now()}){
+function createAdminHandler({storage,telegram,env=process.env,validateConfig,now=()=>Date.now()}){
  let verifier;
  const cookie=(value,age)=>`${COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${age}`;
  function passwordReady(){return typeof env.ADMIN_PASSWORD==='string'&&env.ADMIN_PASSWORD.length>=14&&env.ADMIN_PASSWORD.length<=256}
@@ -62,6 +62,12 @@ function createAdminHandler({storage,env=process.env,validateConfig,now=()=>Date
    if(write&&(typeof h['x-csrf-token']!=='string'||h['x-csrf-token']!==s.csrf))fail(403,'Обновите страницу и повторите действие');
    if(route==='/api/session'&&method==='GET')return reply(200,{csrf:s.csrf});
    if(route==='/api/logout'&&method==='POST'){await storage.deleteSession(digest(value));out['Set-Cookie']=cookie('',0);return reply(200,{ok:true})}
+   if(route==='/api/admin/telegram'){
+    if(!telegram)fail(503,'Telegram пока не настроен');
+    if(method==='GET')return reply(200,await telegram.status());
+    if(method==='POST'){const b=json(1024);return reply(200,await telegram.action(b.action))}
+    fail(405,'Метод не поддерживается');
+   }
    if(route==='/api/admin/config'&&method==='GET')return reply(200,await storage.state());
    if(route==='/api/admin/config'&&method==='PUT'){
     const b=json();try{validateConfig(b.config)}catch{fail(422,'Проверьте настройки цен')}
