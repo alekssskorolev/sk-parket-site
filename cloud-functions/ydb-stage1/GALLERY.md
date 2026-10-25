@@ -41,20 +41,21 @@ rechecked against the published manifest, with a five-minute public cache.
 - Live synthetic upload of two pictures, authenticated WebP preview, public draft
   URL returns 404, draft never published, test metadata/files removed afterward.
 
-## Mixed examples and actual-work tiles
+## Carousel pairs and real-work tiles
 
-Admin **Примеры работ**: every card has `mode` (`pair` / `single`) and
-`placement` (`carousel` / `grid`). Omitted fields on existing records mean a pair
-in the carousel; no migration or re-upload is needed. The **Показывать «До / После»**
-checkbox switches off the Before field and labels for a single photo (stored as
-`after`). Turning it off preserves the draft Before reference for undo but never
-exposes that photo publicly unless referenced by another published pair.
-The tile grid accepts single photos only. All cards share draft/save/publication,
-visibility and ordering controls. Existing unpublished edits must not be
-published incidentally when adding new cards.
+Admin **Примеры работ** has two distinct tabs: **Карусель — до и после**
+and **Плитка работ**, each with its own add, ordering, visibility and delete controls.
+Carousel entries use `mode: pair, placement: carousel`; tile entries use
+`mode: single, placement: grid` and the `after` photo field. Legacy records default
+to carousel pairs; legacy single-photo carousel entries appear in the tile group.
+No source image is discarded. Saving and explicit publication still cover both tabs.
+The tile tab also supports batch uploads (one work per photo, up to 50 total cards).
 
-Public heading: **Примеры работ**. The carousel has no numeric counter or intro.
-Dots navigate slides, arrows are centered over the photo area on desktop/mobile.
-A separate **Реальные работы** tile grid follows the carousel, two columns on
-desktop / one on phones. Clicking any photo opens that individual photo in a
-large viewport; **Масштаб 100%** permits native-size scrolling on small screens.
+Public heading: **Примеры работ**. Only the existing scrollbar and overlay arrows
+navigate the carousel — no extra dots or numeric counter. Arrows are centered over
+the photo area on desktop/mobile. Directly below, **Реальные работы** is a compact
+photo collage, four columns on large screens, three on tablets and two on phones.
+Captions are retained as metadata/accessible names but do not interrupt the collage.
+Click/tap opens only the chosen image in a large viewport with one close button;
+there are no Before/After, zoom, title or description controls. Escape/backdrop close
+and focus restoration remain available. Browser-native pinch zoom remains enabled.
