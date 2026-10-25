@@ -1,6 +1,6 @@
 'use strict';
-const sharp=require('sharp');const {randomUUID}=require('node:crypto');
-sharp.cache({memory:16,files:0,items:32});sharp.concurrency(1);
+const {randomUUID}=require('node:crypto');
+let sharp;function imageEngine(){if(!sharp){sharp=require('sharp');sharp.cache({memory:16,files:0,items:32});sharp.concurrency(1)}return sharp}
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const fail=(status,message)=>{throw Object.assign(Error(message),{status,publicError:true})};
 // Authenticate only with the Yandex Cloud service-account token supplied to this
@@ -22,7 +22,7 @@ function createObjectStore({env=process.env,fetchImpl=fetch}={}){
 async function convertImage(data){
  if(typeof data!=='string'||data.length<16||data.length>1900000||data.length%4||!/^[A-Za-z0-9+/]+={0,2}$/.test(data))fail(422,'Не удалось прочитать фотографию. Добавьте JPEG, PNG или WebP.');
  const input=Buffer.from(data,'base64');if(input.length>1400000)fail(413,'Фотография слишком большая. Попробуйте уменьшенную копию.');
- try{const image=sharp(input,{limitInputPixels:16000000,failOn:'warning'}),meta=await image.metadata();
+ try{const image=imageEngine()(input,{limitInputPixels:16000000,failOn:'warning'}),meta=await image.metadata();
   if(!['jpeg','png','webp'].includes(meta.format)||meta.pages>1||meta.width<320||meta.height<240)fail(422,'Нужно статичное фото JPEG, PNG или WebP размером от 320 × 240 пикселей.');
   const {data:bytes,info}=await image.rotate().resize({width:2000,height:2000,fit:'inside',withoutEnlargement:true}).flatten({background:'#ffffff'}).webp({quality:86,effort:4}).toBuffer({resolveWithObject:true});
   if(bytes.length>1800000)fail(413,'Фото слишком сложное для загрузки. Попробуйте уменьшенную копию.');return {bytes,width:info.width,height:info.height};

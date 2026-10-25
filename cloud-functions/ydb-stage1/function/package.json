@@ -7,6 +7,8 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@img/sharp-libvips-linux-x64": "1.2.4",
+    "@img/sharp-linux-x64": "0.34.5",
     "@yandex-cloud/nodejs-sdk": "2.9.3",
     "sharp": "0.34.5",
     "ydb-sdk": "5.11.1"
