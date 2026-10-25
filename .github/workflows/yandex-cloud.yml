@@ -75,7 +75,7 @@ jobs:
             TEST_WRITES_ENABLED=false
             LEADS_ENABLED=true
             PRIVACY_OPERATOR_CONFIRMED=yes
-            CONSENT_VERSION=skparket-pd-v1
+            CONSENT_VERSION=skparket-pd-v2
             ADMIN_ORIGIN=https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net
       - name: Verify private health endpoint without creating leads
         env:
@@ -108,7 +108,7 @@ jobs:
             const configResponse = await fetch(base + '/api/config', {headers: {Origin: 'https://alekssskorolev.github.io'}, signal: AbortSignal.timeout(45000)});
             if (!configResponse.ok) throw new Error('Public config unavailable');
             const config = await configResponse.json();
-            if (config.leadsEnabled !== true || config.consentVersion !== 'skparket-pd-v1' || config.photosEnabled !== false) throw new Error('Intake configuration is incorrect');
+            if (config.leadsEnabled !== true || config.consentVersion !== 'skparket-pd-v2' || config.photosEnabled !== false) throw new Error('Intake configuration is incorrect');
             if (configResponse.headers.get('access-control-allow-origin') !== 'https://alekssskorolev.github.io') throw new Error('Public CORS configuration is incorrect');
             console.log('Public form is enabled with versioned consent. No leads created by workflow.');
             console.log('Function is private; admin data requires a valid session.');
