@@ -61,7 +61,7 @@ jobs:
           service-account: ajeo58qnnk9drt1hj0l7
           logs-disabled: 'true'
           secrets: |
-            ADMIN_PASSWORD=e6q7cg1917m1bgbnuion/e6qbg4lmd07nsfv5lh7s/ADMIN_PASSWORD
+            ADMIN_PASSWORD=e6q7cg1917m1bgbnuion/e6qofldtgge73ciqn5nd/ADMIN_PASSWORD_V2
           environment: |
             YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135
             YDB_DATABASE=/ru-central1/b1giavulfpadcrjur0gm/etndibb9bo594a8l1qp5
@@ -81,5 +81,20 @@ jobs:
             const result = await response.json();
             if (result.ok !== true || result.database !== 'connected') throw new Error('Unexpected health response');
             console.log('Private function is connected to YDB. No customer records created.');
+          })().catch(error => {console.error(error.message);process.exitCode = 1;});
+          JS
+      - name: Verify isolated admin requires authentication
+        run: |
+          node <<'JS'
+          (async () => {
+            const base = 'https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net';
+            for (const [path, expected] of [['/admin', 200], ['/admin.js', 200], ['/api/session', 401], ['/api/admin/leads', 401], ['/api/admin/config', 401]]) {
+              const response = await fetch(base + path, {signal: AbortSignal.timeout(45000)});
+              if (response.status !== expected) throw new Error(path + ': expected ' + expected + ', received ' + response.status);
+              console.log(path + ': ' + response.status);
+            }
+            const direct = await fetch('https://functions.yandexcloud.net/d4e98jo86kn9o7f75fia', {signal: AbortSignal.timeout(45000)});
+            if (direct.status !== 403) throw new Error('Function must remain private');
+            console.log('Function is private; admin data requires a valid session.');
           })().catch(error => {console.error(error.message);process.exitCode = 1;});
           JS
