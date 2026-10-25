@@ -118,7 +118,7 @@ $('contact-form').addEventListener('submit',async e=>{
   const response=await request('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();
   if(!response.ok){if(response.status===409){await refreshConfig();pendingRequestId=null}throw Error(result.error||'Не удалось подтвердить сохранение заявки')}
   if(result.ok!==true||typeof result.id!=='string')throw Error('Не удалось подтвердить сохранение. Повторите отправку.');
-  $('form-status').textContent='Заявка сохранена. Номер: '+result.id+'. Спасибо за обращение!';
+  $('form-status').textContent='Ваша заявка успешно отправлена! Ожидайте звонка мастера в ближайшее рабочее время.';
   $('contact-form').classList.add('submitted');$('callback-dialog').classList.add('callback-success');$('form-status').tabIndex=-1;$('form-status').focus();
   $('client-name').value='';$('phone').value='';$('comment').value='';$('consent').checked=false;pendingRequestId=null;setSummary();
  }catch(error){$('form-status').textContent=error.name==='TimeoutError'||error.name==='TypeError'?'Не удалось подтвердить сохранение. Повторите отправку: защита от дублей сохранит одну заявку.':error.message||'Ошибка соединения. Повторите отправку.'}
