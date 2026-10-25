@@ -54,7 +54,7 @@ jobs:
           runtime: nodejs22
           entrypoint: index.handler
           source-root: .deploy/function
-          include: .deploy/function
+          include: '.'
           memory: 256Mb
           execution-timeout: '30'
           service-account: ajeo58qnnk9drt1hj0l7

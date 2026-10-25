@@ -10,7 +10,7 @@ Workflow: `.github/workflows/yandex-cloud.yml`.
 
 - OIDC-аудитория: https://github.com/alekssskorolev/sk-parket-site/ref/refs/heads/main
 - Федерация: skparket-github-main, aje5rk538uo19o3ecq09.
-- Привязка: только repo:alekssskorolev/sk-parket-site:ref:refs/heads/main.
+- Привязка: только repo:alekssskorolev@262314857/sk-parket-site@1429928685:ref:refs/heads/main.
 - Аккаунт публикации: skparket-deployer, aje8ha4eb671m98g7l39.
 - Аккаунт выполнения: skparket-backend, ajeo58qnnk9drt1hj0l7.
 - В репозитории нет постоянного облачного ключа или пароля администратора.
