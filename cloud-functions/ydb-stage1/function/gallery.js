@@ -32,12 +32,13 @@ function createGallery({storage,objects=createObjectStore(),limits,now=()=>Date.
  const ready=()=>objects.ready();
  async function state(){return {...await storage.state(),ready:ready()}}
  async function validate(items,readMedia,complete=false){
-  if(!Array.isArray(items)||items.length>50)fail(422,'В галерее может быть до 50 пар фотографий');const ids=new Set(),clean=[];
+  if(!Array.isArray(items)||items.length>50)fail(422,'В галерее может быть до 50 карточек');const ids=new Set(),clean=[];
   for(const x of items){if(!x||!ID.test(x.id)||ids.has(x.id))fail(422,'Неверный идентификатор карточки');ids.add(x.id);
    for(const [key,max]of [['title',100],['description',600]])if(typeof x[key]!=='string'||x[key].length>max||/[\u0000-\u0008\u000b-\u001f\u007f]/.test(x[key]))fail(422,'Проверьте название и описание');
    if((complete&&x.visible&&!x.title.trim())||!['project','visualization'].includes(x.kind)||typeof x.visible!=='boolean')fail(422,'Укажите название и тип карточки');
-   for(const side of ['before','after']){if(!x[side]&&(!complete||!x.visible))continue;if(!ID.test(x[side]||''))fail(422,'Добавьте обе фотографии: «До» и «После»');const m=await readMedia(x[side]);if(!m||m.status!=='ready')fail(422,'Фотография больше недоступна. Загрузите её заново.')}
-   clean.push({id:x.id,title:x.title.trim(),description:x.description.trim(),kind:x.kind,visible:x.visible,before:x.before||null,after:x.after||null});
+   const mode=x.mode??'pair',placement=x.placement??'carousel';if(!['pair','single'].includes(mode)||!['carousel','grid'].includes(placement)||placement==='grid'&&mode!=='single')fail(422,'Проверьте формат и размещение карточки');
+   for(const side of ['before','after']){const required=complete&&x.visible&&(mode==='pair'||side==='after');if(!x[side]&&!required)continue;if(!ID.test(x[side]||''))fail(422,mode==='single'?'Добавьте фотографию работы':'Добавьте обе фотографии: «До» и «После»');const m=await readMedia(x[side]);if(!m||m.status!=='ready')fail(422,'Фотография больше недоступна. Загрузите её заново.')}
+   clean.push({id:x.id,title:x.title.trim(),description:x.description.trim(),kind:x.kind,visible:x.visible,mode,placement,before:x.before||null,after:x.after||null});
   }return clean;
  }
  async function save(revision,items){await storage.mutate(async(s,read)=>{if(s.revision!==revision)fail(409,'Галерея изменена в другой вкладке. Обновите её перед сохранением.');s.draft=await validate(items,read);s.revision++});return state()}
@@ -47,12 +48,12 @@ function createGallery({storage,objects=createObjectStore(),limits,now=()=>Date.
   await storage.createMedia(m);try{await objects.put(id,image.bytes);return await storage.readyMedia(id)}catch(e){await remove(id).catch(()=>{});throw e}
  }
  async function remove(id){if(!ID.test(id||''))fail(404,'Фотография не найдена');const m=await storage.claimDelete(id);if(!m)fail(409,'Фотография используется в галерее');await objects.delete(id);await storage.deleteMedia(id);return {ok:true}}
- async function manifest(){const s=await storage.state();if(!s.published)return {configured:false,items:[]};const items=[],visible=s.published.items.filter(x=>x.visible),ids=[...new Set(visible.flatMap(x=>[x.before,x.after]))],all=storage.mediaMany?new Map((await storage.mediaMany(ids)).map(x=>[x.id,x])):null;
-  for(const x of visible){const [b,a]=all?[all.get(x.before),all.get(x.after)]:await Promise.all([storage.media(x.before),storage.media(x.after)]);if(!b||!a||b.status!=='ready'||a.status!=='ready')continue;
-   const image=m=>({id:m.id,width:m.width,height:m.height,path:'/api/gallery/images/'+m.id});items.push({id:x.id,title:x.title,description:x.description,kind:x.kind,before:image(b),after:image(a)});
+ async function manifest(){const s=await storage.state();if(!s.published)return {configured:false,items:[]};const items=[],visible=s.published.items.filter(x=>x.visible),ids=[...new Set(visible.flatMap(x=>[x.before,x.after]).filter(Boolean))],all=storage.mediaMany?new Map((await storage.mediaMany(ids)).map(x=>[x.id,x])):null;
+  for(const x of visible){const [b,a]=all?[all.get(x.before),all.get(x.after)]:await Promise.all([storage.media(x.before),storage.media(x.after)]);const mode=x.mode||'pair';if(!a||a.status!=='ready'||mode==='pair'&&(!b||b.status!=='ready'))continue;
+   const image=m=>({id:m.id,width:m.width,height:m.height,path:'/api/gallery/images/'+m.id});items.push({id:x.id,title:x.title,description:x.description,kind:x.kind,mode,placement:x.placement||'carousel',before:mode==='pair'?image(b):null,after:image(a)});
   }return {configured:true,updated:s.published.updated,items};
  }
- async function image(id,privatePreview=false){if(!ID.test(id||''))fail(404,'Фотография не найдена');if(!privatePreview){const s=await storage.state();if(!s.published?.items.some(x=>x.visible&&(x.before===id||x.after===id)))fail(404,'Фотография не найдена')}
+ async function image(id,privatePreview=false){if(!ID.test(id||''))fail(404,'Фотография не найдена');if(!privatePreview){const s=await storage.state();if(!s.published?.items.some(x=>x.visible&&((x.mode!=='single'&&x.before===id)||x.after===id)))fail(404,'Фотография не найдена')}
   const m=await storage.media(id);if(!m||m.status!=='ready')fail(404,'Фотография не найдена');return {data:await objects.get(id),width:m.width,height:m.height};
  }
  async function cleanup(){if(!ready())return;const s=await storage.state(),old=await storage.oldMedia(now()-86400000,s.gcCursor);for(const m of old)await remove(m.id).catch(()=>{});await storage.mutate(p=>{p.gcCursor=old.length===1?old.at(-1).id:''})}

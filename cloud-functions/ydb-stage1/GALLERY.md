@@ -40,3 +40,21 @@ rechecked against the published manifest, with a five-minute public cache.
   guard, two-column/stacked photos.
 - Live synthetic upload of two pictures, authenticated WebP preview, public draft
   URL returns 404, draft never published, test metadata/files removed afterward.
+
+## Mixed examples and actual-work tiles
+
+Admin **Примеры работ**: every card has `mode` (`pair` / `single`) and
+`placement` (`carousel` / `grid`). Omitted fields on existing records mean a pair
+in the carousel; no migration or re-upload is needed. The **Показывать «До / После»**
+checkbox switches off the Before field and labels for a single photo (stored as
+`after`). Turning it off preserves the draft Before reference for undo but never
+exposes that photo publicly unless referenced by another published pair.
+The tile grid accepts single photos only. All cards share draft/save/publication,
+visibility and ordering controls. Existing unpublished edits must not be
+published incidentally when adding new cards.
+
+Public heading: **Примеры работ**. The carousel has no numeric counter or intro.
+Dots navigate slides, arrows are centered over the photo area on desktop/mobile.
+A separate **Реальные работы** tile grid follows the carousel, two columns on
+desktop / one on phones. Clicking any photo opens that individual photo in a
+large viewport; **Масштаб 100%** permits native-size scrolling on small screens.
