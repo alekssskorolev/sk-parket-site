@@ -11,9 +11,9 @@ function createAdminStorage(getDriver,seed){
     ['sk_admin_sessions',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
     ['sk_admin_limits',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
    ]){
-    try{await s.describeTable(name);continue}catch(e){if(e.status!==StatusCode.SCHEME_ERROR)throw e}
+    try{await s.describeTable(name);continue}catch(e){if(e.constructor.status!==StatusCode.SCHEME_ERROR)throw e}
     const t=new TableDescription().withPrimaryKey('id');for(const [n,type]of cols)t.withColumn(new Column(n,type));if(ttl)t.withTtl('expires',0);
-    try{await s.createTable(name,t)}catch(e){await s.describeTable(name)}
+    try{await s.createTable(name,t)}catch(e){try{await s.describeTable(name)}catch{throw e}}
    }
   });await mutate('sk_admin_state','prices',p=>({value:p||{draft:seed,revision:1,published:{version:1,updated:new Date().toISOString(),config:seed},history:[{id:1,created:new Date().toISOString(),config:seed}]},result:true}),false);
   })().catch(e=>{ready=null;throw e});
@@ -35,7 +35,7 @@ function createAdminStorage(getDriver,seed){
     }
     await s.commitTransaction({txId:tx.id});return change.result;
    }catch(e){await s.rollbackTransaction({txId:tx.id}).catch(()=>{});throw e}
-  })}catch(e){if(e.status!==StatusCode.ABORTED||attempt>=4)throw e}
+  })}catch(e){if(e.constructor.status!==StatusCode.ABORTED||attempt>=4)throw e}
  }
  const read=async(table,id)=>{await ensure();const r=await query(`DECLARE $id AS Utf8; SELECT payload FROM ${table} WHERE id=$id;`,{$id:V.utf8(id)});return r[0]?parse(r[0].payload):null};
  function lead(x){const e=x.estimate?parse(x.estimate):null;return {...x,created:new Date(x.created).toISOString(),updated:new Date(x.updated).toISOString(),estimate:e,version:e?.priceVersion||null,photos:[]}}
