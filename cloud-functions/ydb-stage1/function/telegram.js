@@ -20,6 +20,14 @@ function createTelegram({storage,env=process.env,fetchImpl=telegramFetch,now=()=
  async function status(){const s=await storage.telegramSettings();return {transport:'https-ipv4-v1',proxyConfigured:!!(env.HTTPS_PROXY||env.https_proxy),ready:ready(),connected:!!s?.chatId,bot:'skparket_bot',pending:(await storage.telegramPending()).length,pairing:!!(s?.pairHash&&s.pairExpires>now())}}
  async function send(chatId,test=false){return call('sendMessage',{chat_id:chatId,text:test?'SK Паркет: проверка уведомлений. Новая заявка не создавалась.':'Новая заявка на сайте SK Паркет. Откройте защищённую админку, чтобы посмотреть обращение.',protect_content:true,reply_markup:{inline_keyboard:[[{text:'Открыть заявки',url:env.ADMIN_ORIGIN+'/admin'}]]}})}
  async function action(action){
+  if(action==='diagnose'){
+   if(!await storage.limit('telegram-diagnose',12,3600000,now()))fail(429,'Повторите проверку соединения позже');
+   const result={transport:'https-ipv4-v1'};
+   for(const [key,url] of [['telegram','https://api.telegram.org/'],['external','https://example.com/']]){
+    try{const r=await telegramFetch(url,{headers:{},signal:AbortSignal.timeout(4500)});result[key]={reachable:true,status:r.status}}
+    catch(e){result[key]={reachable:false,phase:e.safePhase||'unknown',code:/^[A-Z_]{2,40}$/.test(e.code||'')?e.code:'NETWORK'}}
+   }return result;
+  }
   if(action==='pair'){
    if(!await storage.limit('telegram-pair',10,3600000,now()))fail(429,'Слишком много попыток подключения. Повторите через час.');
    const me=await call('getMe');if(me.username?.toLowerCase()!=='skparket_bot')fail(409,'Этот токен принадлежит другому боту. Нужен @skparket_bot.');
