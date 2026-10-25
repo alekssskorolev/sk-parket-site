@@ -29,7 +29,7 @@ function createPublicHandler({storage,env=process.env,calculate,now=()=>new Date
    if(route==='/api/config'&&method==='GET')return reply(200,{...await storage.current(),leadsEnabled:enabled,photosEnabled:false,consentVersion:enabled?env.CONSENT_VERSION:null});
    if(route!=='/api/leads'||method!=='POST')fail(405,'Метод не поддерживается');
    if(!allowed)fail(403,'Источник не разрешён');
-   if(!enabled)fail(503,'Приём заявок пока выключен: документы по персональным данным готовятся. Реальные контакты не отправляйте.');
+   if(!enabled)fail(503,'Приём заявок временно выключен. Позвоните: +7 911 798-23-06 или напишите на skparket@bk.ru.');
    const b=readJson(event,headers);if(b.website)fail(400,'Не удалось принять заявку');
    if(typeof b.name!=='string'||b.name.length>100||/[\u0000-\u001f\u007f]/.test(b.name))fail(422,'Имя — до 100 символов');
    if(typeof b.phone!=='string'||!/^\+?[\d ()-]{10,25}$/.test(b.phone))fail(422,'Проверьте телефон');

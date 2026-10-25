@@ -30,8 +30,8 @@ function applyConfig(data){const initial=!publicState,previous=publicState;publi
  $('contact-form').querySelector('button[type=submit]').disabled=submitting||!data.leadsEnabled;
  for(const id of ['client-name','phone','comment','consent'])$(id).disabled=submitting||!data.leadsEnabled;
  $('floor-photo-input').disabled=true;document.querySelector('.floor-photos').hidden=true;
- $('launch-notice').hidden=false;$('launch-notice').textContent=data.leadsEnabled?'Цены загружаются из общей базы. Заявки сохраняются в облаке.':'Калькулятор подключён к общей базе. Приём заявок временно выключен: документы по персональным данным готовятся.';
- $('lead-readiness').hidden=data.leadsEnabled;$('lead-readiness').textContent=data.leadsEnabled?'Нажимая кнопку, вы отправляете заявку мастеру. Итоговую стоимость согласуем после осмотра.':'Приём заявок пока выключен: документы по персональным данным готовятся. Реальные контакты не вводите. Фотографии и Telegram пока не подключены.';
+ $('launch-notice').hidden=false;$('launch-notice').textContent=data.leadsEnabled?'Цены загружаются из общей базы. Заявки сохраняются в облаке.':'Калькулятор подключён к общей базе. Форма временно недоступна. Для связи: +7 911 798-23-06.';
+ $('lead-readiness').hidden=data.leadsEnabled;$('lead-readiness').textContent=data.leadsEnabled?'Нажимая кнопку, вы отправляете заявку мастеру. Итоговую стоимость согласуем после осмотра.':'Форма временно недоступна. Позвоните: +7 911 798-23-06 или напишите на skparket@bk.ru.';
  update();
  if(previous&&previous.version!==data.version&&!$('contact-form').classList.contains('submitted')){setSummary();$('form-status').textContent='Цены обновились. При необходимости заново приложите расчёт через кнопку «Обсудить смету». Окончательная смета — после осмотра.';}
 }
@@ -105,7 +105,7 @@ worksCards.forEach(card=>card.querySelector('.work-photo-trigger').addEventListe
 async function compressedPhotos(){const photos=[];for(const item of floorPhotos){let bitmap;try{bitmap=await createImageBitmap(item.file)}catch{throw Error('Не удалось прочитать фото «'+item.file.name+'». Удалите его или добавьте JPEG/PNG.')}const ratio=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*ratio);canvas.height=Math.round(bitmap.height*ratio);canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const jpeg=canvas.toDataURL('image/jpeg',.8).split(',')[1];if(jpeg.length>2800000)throw Error('Фото слишком большое. Добавьте уменьшенную копию.');photos.push({data:jpeg});}return photos;}
 $('contact-form').addEventListener('submit',async e=>{
  e.preventDefault();if(submitting)return;
- if(!publicState?.leadsEnabled){$('form-status').textContent='Приём заявок пока выключен. Не вводите реальные контакты.';return}
+ if(!publicState?.leadsEnabled){$('form-status').textContent='Форма временно недоступна. Позвоните: +7 911 798-23-06.';return}
  const n=$('phone').value.replace(/\D/g,''),valid=n.length===10||(n.length===11&&/^[78]/.test(n));
  $('phone-error').hidden=valid;$('phone').setAttribute('aria-invalid',!valid);if(!valid){$('phone').focus();return}
  if(!$('consent').checked){$('form-status').textContent='Подтвердите согласие на обработку данных.';return}
