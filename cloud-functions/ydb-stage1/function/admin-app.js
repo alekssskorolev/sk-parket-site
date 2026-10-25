@@ -3,7 +3,7 @@ const fs=require('node:fs');const path=require('node:path');
 const {randomBytes,createHash,scrypt,timingSafeEqual}=require('node:crypto');const {promisify}=require('node:util');
 const derive=promisify(scrypt);const digest=x=>createHash('sha256').update(x).digest('hex');
 const AGE=8*3600;const COOKIE='__Secure-sk_admin';
-const fail=(status,message)=>{throw Object.assign(Error(message),{status})};
+const fail=(status,message)=>{throw Object.assign(Error(message),{status,publicError:true})};
 const token=()=>randomBytes(32).toString('hex');
 const SAFE={
  'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','X-Robots-Tag':'noindex, nofollow',
@@ -36,7 +36,8 @@ function createAdminHandler({storage,env=process.env,validateConfig,now=()=>Date
   try{
    // Only expose the admin on an isolated API Gateway origin, never the shared Functions host.
    const origin=env.ADMIN_ORIGIN;const goodOrigin=typeof origin==='string'&&/^https:\/\/[a-z0-9.-]+$/.test(origin)&&!origin.includes('functions.yandexcloud.net');
-   if(!goodOrigin||!passwordReady())fail(503,'Админка ещё настраивается');
+   if(!goodOrigin)fail(503,'Настройка адреса админки не завершена');
+   if(!passwordReady())fail(503,'Нужен пароль админки длиной от 14 до 256 символов. Обновите секрет Lockbox.');
    if(h.host!==new URL(origin).host)fail(403,'Используйте защищённый адрес админки');
    if(h.origin&&h.origin!==origin)fail(403,'Запрос с другого сайта запрещён');
    const write=!['GET','HEAD'].includes(method);
@@ -82,7 +83,7 @@ function createAdminHandler({storage,env=process.env,validateConfig,now=()=>Date
     if(method==='DELETE'){await storage.deleteLead(id);return reply(200,{ok:true})}
    }
    fail(404,'Не найдено');
-  }catch(e){const status=Number.isInteger(e.status)&&e.status>=400&&e.status<500?e.status:503;return reply(status,{error:status===503?'Сервис временно недоступен. Повторите позже.':e.message})}
+  }catch(e){const status=Number.isInteger(e.status)&&e.status>=400&&e.status<500?e.status:503;return reply(status,{error:status===503&&!e.publicError?'Сервис временно недоступен. Повторите позже.':e.message})}
  };
 }
 module.exports={createAdminHandler,digest};
