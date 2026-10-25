@@ -10,7 +10,7 @@ const SAFE={
  'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
 };
-function createAdminHandler({storage,telegram,env=process.env,validateConfig,now=()=>Date.now()}){
+function createAdminHandler({storage,telegram,gallery,env=process.env,validateConfig,now=()=>Date.now()}){
  let verifier;
  const cookie=(value,age)=>`${COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${age}`;
  function passwordReady(){return typeof env.ADMIN_PASSWORD==='string'&&env.ADMIN_PASSWORD.length>=14&&env.ADMIN_PASSWORD.length<=256}
@@ -22,7 +22,7 @@ function createAdminHandler({storage,telegram,env=process.env,validateConfig,now
  return async function admin(event,context){
   const route=event.queryStringParameters?.route||event.path||event.rawPath||'/health';
   const method=String(event.httpMethod||'GET').toUpperCase();
-  const assets={'/admin':'admin.html','/admin/':'admin.html','/admin.html':'admin.html','/admin.js':'admin.js','/admin.css':'admin.css','/engine.js':'engine.js','/lead-export.js':'lead-export.js','/notifications-sw.js':'notifications-sw.js'};
+  const assets={'/admin':'admin.html','/admin/':'admin.html','/admin.html':'admin.html','/gallery-admin.js':'gallery-admin.js','/admin.js':'admin.js','/admin.css':'admin.css','/engine.js':'engine.js','/lead-export.js':'lead-export.js','/notifications-sw.js':'notifications-sw.js'};
   if(!assets[route]&&!['/api/login','/api/session','/api/logout'].includes(route)&&!route.startsWith('/api/admin/'))return null;
   const h=Object.fromEntries(Object.entries(event.headers||{}).map(([k,v])=>[k.toLowerCase(),String(v)]));const out={...SAFE,'Content-Type':'application/json; charset=utf-8'};
   const reply=(statusCode,body)=>({statusCode,headers:out,body:JSON.stringify(body)});
@@ -62,6 +62,17 @@ function createAdminHandler({storage,telegram,env=process.env,validateConfig,now
    if(write&&(typeof h['x-csrf-token']!=='string'||h['x-csrf-token']!==s.csrf))fail(403,'Обновите страницу и повторите действие');
    if(route==='/api/session'&&method==='GET')return reply(200,{csrf:s.csrf});
    if(route==='/api/logout'&&method==='POST'){await storage.deleteSession(digest(value));out['Set-Cookie']=cookie('',0);return reply(200,{ok:true})}
+   if(route.startsWith('/api/admin/gallery')){
+    if(!gallery)fail(503,'Галерея пока не настроена');
+    if(route==='/api/admin/gallery'&&method==='GET')return reply(200,await gallery.state());
+    if(route==='/api/admin/gallery'&&method==='PUT'){const b=json(200000);return reply(200,await gallery.save(b.revision,b.items))}
+    if(route==='/api/admin/gallery/publish'&&method==='POST'){const b=json(1024);return reply(200,await gallery.publish(b.revision))}
+    if(route==='/api/admin/gallery/media'&&method==='POST'){const b=json(2000000);return reply(201,await gallery.upload(b.data))}
+    const photo=route.match(/^\/api\/admin\/gallery\/media\/([a-f0-9-]{36})$/);
+    if(photo&&method==='GET'){const image=await gallery.image(photo[1],true);return {statusCode:200,headers:{...out,'Content-Type':'image/webp'},body:image.data.toString('base64'),isBase64Encoded:true}}
+    if(photo&&method==='DELETE')return reply(200,await gallery.remove(photo[1]));
+    fail(404,'Не найдено');
+   }
    if(route==='/api/admin/telegram'){
     if(!telegram)fail(503,'Telegram пока не настроен');
     if(method==='GET')return reply(200,await telegram.status());

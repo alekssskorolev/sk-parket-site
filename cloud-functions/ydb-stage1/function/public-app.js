@@ -12,9 +12,9 @@ function readJson(event,headers){
  let b;try{b=JSON.parse(bytes.toString())}catch{fail(400,'Неверный JSON')}
  if(!b||typeof b!=='object'||Array.isArray(b))fail(400,'Нужен JSON-объект');return b;
 }
-function createPublicHandler({storage,telegram,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
+function createPublicHandler({storage,telegram,gallery,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
  return async(event={})=>{
-  const route=event.queryStringParameters?.route||event.path||event.rawPath||'/health';if(!['/api/config','/api/leads'].includes(route))return null;
+  const route=event.queryStringParameters?.route||event.path||event.rawPath||'/health';if(!['/api/config','/api/leads','/api/gallery'].includes(route)&&!route.startsWith('/api/gallery/images/'))return null;
   const method=String(event.httpMethod||'GET').toUpperCase(),headers=Object.fromEntries(Object.entries(event.headers||{}).map(([k,v])=>[k.toLowerCase(),String(v)]));
   const origin=headers.origin,out={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Vary':'Origin'};
   const allowed=origin===PUBLIC_ORIGIN||origin===env.ADMIN_ORIGIN;if(allowed)out['Access-Control-Allow-Origin']=origin;
@@ -24,6 +24,10 @@ function createPublicHandler({storage,telegram,env=process.env,calculate,now=()=
    if(method==='OPTIONS'){
     if(!allowed)fail(403,'Источник не разрешён');
     out['Access-Control-Allow-Methods']='GET, POST, OPTIONS';out['Access-Control-Allow-Headers']='Content-Type';out['Access-Control-Max-Age']='600';return reply(204,null);
+   }
+   if(route==='/api/gallery'&&method==='GET')return reply(200,gallery?await gallery.manifest():{configured:false,items:[]});
+   if(route.startsWith('/api/gallery/images/')&&method==='GET'){
+    if(!gallery)fail(404,'Фотография не найдена');const image=await gallery.image(route.slice('/api/gallery/images/'.length));return {statusCode:200,headers:{...out,'Content-Type':'image/webp','Cache-Control':'public, max-age=300'},body:image.data.toString('base64'),isBase64Encoded:true};
    }
    const enabled=intakeEnabled(env);
    if(route==='/api/config'&&method==='GET')return reply(200,{...await storage.current(),leadsEnabled:enabled,photosEnabled:false,consentVersion:enabled?env.CONSENT_VERSION:null});
