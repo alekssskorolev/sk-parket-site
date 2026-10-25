@@ -8,7 +8,7 @@ function createTelegram({storage,env=process.env,fetchImpl=fetch,now=()=>Date.no
  const ready=()=>typeof env.TELEGRAM_BOT_TOKEN==='string'&&/^\d+:[A-Za-z0-9_-]{20,}$/.test(env.TELEGRAM_BOT_TOKEN);
  async function call(method,data={}){
   if(!ready())fail(503,'Токен Telegram не настроен в Lockbox');
-  let r,b;try{r=await fetchImpl('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(3500)});b=await r.json()}catch{fail(503,'Telegram временно недоступен. Повторите позже.')}
+  let r,b;try{r=await fetchImpl('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(4500)});try{b=await r.json()}catch{fail(503,'Telegram вернул неожиданный ответ (HTTP '+r.status+').')}}catch(e){if(e.publicError)throw e;const codes=[e.cause?.code,...(e.cause?.errors||[]).map(x=>x.code)].filter(x=>typeof x==='string'&&/^[A-Z_]{2,40}$/.test(x));const reason=e.name==='TimeoutError'?'тайм-аут':codes.join(', ')||'сетевая ошибка';fail(503,'Соединение с Telegram недоступно ('+reason+'). Повторите позже.');}
   // Never expose Telegram's raw errors, request URLs, update payloads or credentials.
   if(!r.ok||b.ok!==true){const error=Object.assign(Error(b.error_code===403?'Бот не может написать в этот чат. Разблокируйте его и нажмите «Старт».':'Telegram отклонил запрос. Проверьте токен и повторите позже.'),{status:503,publicError:true});if(b.error_code===429)error.retryAfter=Math.min(86400,Math.max(60,Number(b.parameters?.retry_after)||60));throw error}
   return b.result;
