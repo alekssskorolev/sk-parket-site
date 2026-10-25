@@ -24,7 +24,7 @@ const audience = 'https://github.com/alekssskorolev/sk-parket-site/ref/refs/head
   const claims = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
   if (claims.iss !== 'https://token.actions.githubusercontent.com' || claims.aud !== audience ||
       claims.sub !== 'repo:alekssskorolev/sk-parket-site:ref:refs/heads/main') {
-    throw new Error('Unexpected issuer, audience, or repository subject');
+    throw new Error('Unexpected OIDC scope: ' + JSON.stringify({issuer: claims.iss, audience: claims.aud, subject: claims.sub}));
   }
   const response = await fetch('https://auth.yandex.cloud/oauth/token', {
     method: 'POST',
