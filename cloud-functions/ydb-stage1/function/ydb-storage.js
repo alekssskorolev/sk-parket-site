@@ -42,6 +42,7 @@ function createStorage(env = process.env) {
     return driver;
   }
   return {
+    getDriver,
     async check() {
       const d = await getDriver();
       await d.tableClient.withSession(session => session.executeQuery('SELECT 1 AS connection_test;'));

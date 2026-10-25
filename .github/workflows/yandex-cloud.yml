@@ -38,9 +38,10 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
+          cp -R "$FUNCTION_DIR/admin-public" .deploy/function/
       - name: Obtain short-lived IAM token through repo-and-main-bound OIDC
         id: iam
         run: node cloud-functions/ydb-stage1/deploy/oidc-auth.cjs
@@ -59,10 +60,13 @@ jobs:
           execution-timeout: '30'
           service-account: ajeo58qnnk9drt1hj0l7
           logs-disabled: 'true'
+          secrets: |
+            ADMIN_PASSWORD=e6q7cg1917m1bgbnuion/e6qbg4lmd07nsfv5lh7s/ADMIN_PASSWORD
           environment: |
             YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135
             YDB_DATABASE=/ru-central1/b1giavulfpadcrjur0gm/etndibb9bo594a8l1qp5
             TEST_WRITES_ENABLED=false
+            ADMIN_ORIGIN=https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net
       - name: Verify private health endpoint without creating leads
         env:
           YC_IAM_TOKEN: ${{ steps.iam.outputs.token }}
