@@ -1,0 +1,81 @@
+name: Deploy skparket-api to Yandex Cloud
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cloud-functions/ydb-stage1/**'
+      - '.github/workflows/yandex-cloud.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: skparket-api-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.repository == 'alekssskorolev/sk-parket-site' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      YC_DEPLOY_SA_ID: aje8ha4eb671m98g7l39
+      FUNCTION_DIR: cloud-functions/ydb-stage1/function
+    steps:
+      - name: Checkout trusted main branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.15.0'
+      - name: Install pinned dependencies and run tests
+        run: |
+          npm ci --prefix "$FUNCTION_DIR" --ignore-scripts --no-audit --no-fund
+          node --test cloud-functions/ydb-stage1/test/*.test.cjs
+      - name: Stage only runtime files
+        run: |
+          mkdir -p .deploy/function
+          for file in index.js app.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+            cp "$FUNCTION_DIR/$file" .deploy/function/
+          done
+      - name: Obtain short-lived IAM token through repo-and-main-bound OIDC
+        id: iam
+        run: node cloud-functions/ydb-stage1/deploy/oidc-auth.cjs
+      - name: Publish function version
+        id: deploy
+        uses: yc-actions/yc-sls-function@69db7ed03bdb0b8f9be48f43f68746ee135d649d # v3.1.0
+        with:
+          yc-iam-token: ${{ steps.iam.outputs.token }}
+          folder-id: b1g5jvictf4s63dq76k4
+          function-name: skparket-api
+          runtime: nodejs22
+          entrypoint: index.handler
+          source-root: .deploy/function
+          include: .deploy/function
+          memory: 256Mb
+          execution-timeout: '30'
+          service-account: ajeo58qnnk9drt1hj0l7
+          logs-disabled: 'true'
+          environment: |
+            YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135
+            YDB_DATABASE=/ru-central1/b1giavulfpadcrjur0gm/etndibb9bo594a8l1qp5
+            TEST_WRITES_ENABLED=false
+      - name: Verify private health endpoint without creating leads
+        env:
+          YC_IAM_TOKEN: ${{ steps.iam.outputs.token }}
+        run: |
+          node <<'JS'
+          (async () => {
+            const response = await fetch('https://functions.yandexcloud.net/d4e98jo86kn9o7f75fia?route=/health', {
+              headers: {Authorization: 'Bearer ' + process.env.YC_IAM_TOKEN},
+              signal: AbortSignal.timeout(45000),
+            });
+            if (!response.ok) throw new Error('Health check HTTP ' + response.status);
+            const result = await response.json();
+            if (result.ok !== true || result.database !== 'connected') throw new Error('Unexpected health response');
+            console.log('Private function is connected to YDB. No customer records created.');
+          })().catch(error => {console.error(error.message);process.exitCode = 1;});
+          JS

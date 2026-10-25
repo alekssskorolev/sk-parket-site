@@ -1,0 +1,11 @@
+{
+  "name": "skparket-ydb-api-stage1",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private, test-only YDB intake. Not a production API.",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "ydb-sdk": "5.11.1",
+    "@yandex-cloud/nodejs-sdk": "2.9.3"
+  }
+}
