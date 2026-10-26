@@ -1,8 +1,9 @@
 import {mkdirSync,readFileSync,writeFileSync,copyFileSync} from 'node:fs';
 const root=new URL('../',import.meta.url),dir=new URL('docs/',root),pub=new URL('public/',root),src=new URL('web-cloud/',root);mkdirSync(dir,{recursive:true});
 let html=readFileSync(new URL('index.html',pub),'utf8');
-html=html.replaceAll('href="/"','href="./index.html"').replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=geometric-carousel-4"');
+html=html.replaceAll('href="/"','href="./index.html"').replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=limestone-1"');
 writeFileSync(new URL('index.html',dir),html);
+copyFileSync(new URL('limestone.css',pub),new URL('limestone.css',dir));mkdirSync(new URL('assets/',dir),{recursive:true});copyFileSync(new URL('assets/hero-parquet.svg',pub),new URL('assets/hero-parquet.svg',dir));
 for(const f of ['site.js','api.js'])copyFileSync(new URL(f,src),new URL(f,dir));
 for(const f of ['engine.js','privacy.html','consent.html']){let s=readFileSync(new URL(f,pub),'utf8').replaceAll('href="/"','href="./index.html"').replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"');writeFileSync(new URL(f,dir),s)}
 const admin='https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net/admin';
