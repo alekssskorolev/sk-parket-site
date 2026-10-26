@@ -102,9 +102,44 @@ function syncWorks(){if(!worksCards.length)return;const width=worksCards[0].getB
 function goToWork(index){if(!worksCards.length)return;worksTrack.scrollTo({left:index*(worksCards[0].getBoundingClientRect().width+24),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}
 function moveWork(direction){goToWork(Math.max(0,Math.min(worksCards.length-1,workIndex+direction)))}
 $('works-prev').onclick=()=>moveWork(-1);$('works-next').onclick=()=>moveWork(1);worksTrack.addEventListener('scroll',syncWorks,{passive:true});addEventListener('resize',syncWorks);worksTrack.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();moveWork(e.key==='ArrowRight'?1:-1)}});
-const workDialog=$('work-dialog');let savedBodyOverflow='';
-workDialog.addEventListener('close',()=>{document.body.style.overflow=savedBodyOverflow});
-function openWorkPhoto(card,target){const images=[...card.querySelectorAll('.photo-cell img')];if(!images.length)return;const selected=images.includes(target)?target:images[0],image=galleryNode('img',undefined,'work-view-image');image.crossOrigin='anonymous';image.src=selected.src;image.alt=selected.alt;image.decoding='async';$('work-detail-photos').replaceChildren(image);workDialog.setAttribute('aria-label',selected.alt||'Просмотр фотографии');savedBodyOverflow=document.body.style.overflow;document.body.style.overflow='hidden';workDialog.showModal();}
+const workDialog=$('work-dialog');let savedBodyOverflow='',workPhotos=[],workPhotoIndex=0,workSwipe=null;
+workDialog.addEventListener('close',()=>{document.body.style.overflow=savedBodyOverflow;workPhotos=[];workSwipe=null});
+function showWorkPhoto(index){
+ if(!workPhotos.length)return;
+ workPhotoIndex=(index+workPhotos.length)%workPhotos.length;
+ const selected=workPhotos[workPhotoIndex],image=galleryNode('img',undefined,'work-view-image');
+ image.crossOrigin='anonymous';image.src=selected.src;image.alt=selected.alt;image.decoding='async';image.draggable=false;
+ $('work-detail-photos').replaceChildren(image);
+ workDialog.setAttribute('aria-label',selected.alt||'Просмотр фотографии');
+ const multiple=workPhotos.length>1;
+ $('work-photo-prev').hidden=!multiple;$('work-photo-next').hidden=!multiple;
+ $('work-photo-status').textContent=multiple?'Изображение '+(workPhotoIndex+1)+' из '+workPhotos.length+'. '+selected.alt:'';
+}
+function moveWorkPhoto(direction){if(workDialog.open&&workPhotos.length>1)showWorkPhoto(workPhotoIndex+direction)}
+function openWorkPhoto(card,target){
+ const images=[...card.querySelectorAll('.photo-cell img')];if(!images.length)return;
+ const selected=images.includes(target)?target:images[0];
+ // Tile navigation stays inside geometric drawings, never mixing in before/after pairs.
+ const group=card.closest('#real-works-grid');
+ const sources=group?[...group.querySelectorAll('.photo-cell img')]:[selected];
+ workPhotos=sources.map(img=>({src:img.src,alt:img.alt}));workPhotoIndex=sources.indexOf(selected);
+ showWorkPhoto(workPhotoIndex);
+ savedBodyOverflow=document.body.style.overflow;document.body.style.overflow='hidden';workDialog.showModal();
+}
+$('work-photo-prev').addEventListener('click',()=>moveWorkPhoto(-1));
+$('work-photo-next').addEventListener('click',()=>moveWorkPhoto(1));
+workDialog.addEventListener('keydown',e=>{if(workPhotos.length>1&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();e.stopPropagation();moveWorkPhoto(e.key==='ArrowRight'?1:-1)}});
+$('work-detail-photos').addEventListener('pointerdown',e=>{
+ if(e.pointerType!=='touch')return;
+ if(!e.isPrimary||window.visualViewport?.scale>1){workSwipe=null;return}
+ workSwipe={id:e.pointerId,x:e.clientX,y:e.clientY};e.currentTarget.setPointerCapture(e.pointerId);
+});
+$('work-detail-photos').addEventListener('pointerup',e=>{
+ const start=workSwipe;workSwipe=null;if(!start||start.id!==e.pointerId)return;
+ const dx=e.clientX-start.x,dy=e.clientY-start.y;
+ if(Math.abs(dx)>=50&&Math.abs(dx)>Math.abs(dy)*1.5)moveWorkPhoto(dx<0?1:-1);
+});
+$('work-detail-photos').addEventListener('pointercancel',()=>{workSwipe=null});
 function bindWorks(cards){cards.forEach(card=>card.querySelector('.work-photo-trigger').addEventListener('click',e=>openWorkPhoto(card,e.target.closest('img'))))}bindWorks(worksCards);syncWorks();new ResizeObserver(syncWorks).observe(worksTrack);
 function galleryCard(x){const single=x.mode==='single',sources=single?[['after','']]:[['before','До'],['after','После']];if(!sources.every(([key])=>/^\/api\/gallery\/images\/[a-f0-9-]{36}$/.test(x[key]?.path)))return null;const n=galleryNode,card=n('article',undefined,'gallery-card gallery-has-photos'),button=n('button',undefined,'work-photo-trigger'),pair=n('div',undefined,'pair photo-pair'+(single?' photo-single':''));button.type='button';button.setAttribute('aria-label','Увеличить: '+x.title);for(const [key,label]of sources){const cell=n('div',undefined,'photo-cell'),img=n('img');img.crossOrigin='anonymous';img.src=API_ORIGIN+x[key].path;img.alt=(label?label+' — ':'')+x.title;img.width=x[key].width;img.height=x[key].height;img.loading='lazy';img.decoding='async';cell.append(img);if(label)cell.append(n('span',label,'photo-label'));pair.append(cell)}button.append(pair);const caption=n('div',undefined,'caption');caption.append(n('h3',x.title));if(x.description)caption.append(n('p',x.description));if(x.kind==='visualization')caption.append(n('small','Визуализация варианта укладки'));card.dataset.description=(x.kind==='visualization'?'Визуализация варианта укладки. ':'')+x.description;card.append(button,caption);return card}
 async function loadGallery(){try{const r=await request('/api/gallery');if(!r.ok)return;const g=await r.json();if(!g.configured||!Array.isArray(g.items))return;const section=$('works'),cards=[],tiles=[];for(const x of g.items){const card=galleryCard(x);if(card)(x.placement==='grid'||x.mode==='single'?tiles:cards).push(card)}section.hidden=!cards.length&&!tiles.length;document.querySelectorAll('a[href="#works"]').forEach(a=>a.hidden=section.hidden);worksTrack.parentElement.hidden=!cards.length;$('real-works').hidden=!tiles.length;$('real-works-grid').replaceChildren(...tiles);worksTrack.replaceChildren(...cards);worksCards=cards;workIndex=0;worksTrack.scrollLeft=0;bindWorks([...cards,...tiles]);syncWorks();syncWorks();
