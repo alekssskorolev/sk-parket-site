@@ -110,6 +110,7 @@ function showWorkPhoto(index){
  const selected=workPhotos[workPhotoIndex],image=galleryNode('img',undefined,'work-view-image');
  image.crossOrigin='anonymous';image.src=selected.src;image.alt=selected.alt;image.decoding='async';image.draggable=false;
  $('work-detail-photos').replaceChildren(image);
+ const caption=$('work-photo-caption');caption.textContent=selected.title||'';caption.hidden=!selected.title;workDialog.dataset.caption=selected.title?'true':'false';
  workDialog.setAttribute('aria-label',selected.alt||'Просмотр фотографии');
  const multiple=workPhotos.length>1;
  $('work-photo-prev').hidden=!multiple;$('work-photo-next').hidden=!multiple;
@@ -122,7 +123,7 @@ function openWorkPhoto(card,target){
  // Tile navigation stays inside geometric drawings, never mixing in before/after pairs.
  const group=card.closest('#real-works-grid');
  const sources=group?[...group.querySelectorAll('.photo-cell img')]:[selected];
- workPhotos=sources.map(img=>({src:img.src,alt:img.alt}));workPhotoIndex=sources.indexOf(selected);
+ workPhotos=sources.map(img=>({src:img.src,alt:img.alt,title:group?(img.closest('.gallery-card')?.querySelector('.caption h3')?.textContent.trim()||img.alt):''}));workPhotoIndex=sources.indexOf(selected);
  showWorkPhoto(workPhotoIndex);
  savedBodyOverflow=document.body.style.overflow;document.body.style.overflow='hidden';workDialog.showModal();
 }
