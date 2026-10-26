@@ -55,3 +55,6 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 .gallery-fields .gallery-mode{flex-direction:row;align-items:center;gap:10px;grid-column:1/-1}.gallery-mode input{width:20px;height:20px;min-height:20px;flex:0 0 20px}
 
 .gallery-section-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0;padding:6px;border:1px solid var(--line);border-radius:10px;background:#fff}.gallery-section-tabs button{min-height:48px;flex:1 1 200px}.gallery-section-tabs button[aria-pressed=true]{background:#1465a2;color:#fff;border-color:#1465a2}.gallery-section-heading h2{font-size:24px;margin:0 0 12px}.gallery-batch-upload{display:flex;flex-direction:column;gap:8px;max-width:100%;font-size:14px}.gallery-batch-upload input{max-width:100%}
+
+/* Keep site navigation beside logout without disturbing the admin session. */
+.header-actions{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}.header-actions .site-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 16px;border:1px solid var(--line);border-radius:7px;font:inherit;line-height:1.4;white-space:nowrap;text-decoration:none}.header-actions .site-link:hover{filter:brightness(.96)}
