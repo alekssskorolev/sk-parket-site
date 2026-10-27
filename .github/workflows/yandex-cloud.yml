@@ -45,10 +45,15 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
           cp -R "$FUNCTION_DIR/admin-public" .deploy/function/
+      - name: Prepare MAX API certificate trust
+        run: |
+          mkdir -p .deploy/function/certs
+          curl --fail --silent --show-error --retry 2 --max-time 30 --proto '=https' --tlsv1.2 https://gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt -o .deploy/function/certs/max-root.pem
+          openssl x509 -in .deploy/function/certs/max-root.pem -noout -checkend 86400
       - name: Obtain short-lived IAM token through repo-and-main-bound OIDC
         id: iam
         run: node cloud-functions/ydb-stage1/deploy/oidc-auth.cjs
@@ -70,6 +75,7 @@ jobs:
           secrets: |
             ADMIN_PASSWORD=e6q7cg1917m1bgbnuion/e6qofldtgge73ciqn5nd/ADMIN_PASSWORD_V2
             TELEGRAM_BOT_TOKEN=e6qsesqbjgppvd1u31eu/e6qovakr6rgmo5spjbop/TELEGRAM_BOT_TOKEN
+            MAX_BOT_TOKEN=e6qel7905g721cv89pa5/e6qdqu7l9m46hrrq9l49/MAX_BOT_TOKEN
           environment: |
             GALLERY_BUCKET=skparket-gallery-b1g5jvictf4s63dq76k4
             YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135
@@ -91,7 +97,7 @@ jobs:
             });
             if (!response.ok) throw new Error('Health check HTTP ' + response.status);
             const result = await response.json();
-            if (result.ok !== true || result.database !== 'connected') throw new Error('Unexpected health response');
+            if (result.ok !== true || result.database !== 'connected' || result.maxConfigured !== true) throw new Error('Unexpected health response');
             console.log('Private function is connected to YDB. No customer records created.');
           })().catch(error => {console.error(error.message);process.exitCode = 1;});
           JS

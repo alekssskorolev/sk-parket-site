@@ -56,7 +56,7 @@ function createPublicHandler({storage,telegram,gallery,env=process.env,calculate
    const current=await storage.current();let estimate=null;
    if(selection){if(b.version!==current.version)fail(409,'Цены обновились. Пересчитайте стоимость перед отправкой.');estimate={...calculate(current.config,selection),priceVersion:current.version}}
    const order={id:makeId(),created:date,name:normalized.name,phone,comment:normalized.comment,estimate,consentVersion:env.CONSENT_VERSION};
-   const saved=await storage.insertLeadOnce(order,requestId,fingerprint,+date+7*86400000,!!telegram?.ready());
+   const saved=await storage.insertLeadOnce(order,requestId,fingerprint,+date+7*86400000,telegram?.ready()||false);
    // Notification failure must never turn a committed application into a failed submission.
    if(saved.created&&telegram)await telegram.flush(1).catch(()=>{});
    return reply(saved.created?201:200,{ok:true,id:saved.id,duplicate:!saved.created});

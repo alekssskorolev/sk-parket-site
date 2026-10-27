@@ -10,7 +10,7 @@ const SAFE={
  'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
 };
-function createAdminHandler({storage,telegram,gallery,env=process.env,validateConfig,now=()=>Date.now()}){
+function createAdminHandler({storage,telegram,max,gallery,env=process.env,validateConfig,now=()=>Date.now()}){
  let verifier;
  const cookie=(value,age)=>`${COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${age}`;
  function passwordReady(){return typeof env.ADMIN_PASSWORD==='string'&&env.ADMIN_PASSWORD.length>=14&&env.ADMIN_PASSWORD.length<=256}
@@ -74,9 +74,8 @@ function createAdminHandler({storage,telegram,gallery,env=process.env,validateCo
     fail(404,'Не найдено');
    }
    if(route==='/api/admin/telegram'){
-    if(!telegram)fail(503,'Telegram пока не настроен');
-    if(method==='GET')return reply(200,await telegram.status());
-    if(method==='POST'){const b=json(1024);return reply(200,await telegram.action(b.action))}
+    if(method==='GET'){const channel=event.queryStringParameters?.provider==='max'?max:telegram;if(!channel)fail(503,'Уведомления пока не настроены');return reply(200,await channel.status())}
+    if(method==='POST'){const b=json(1024),channel=b.provider==='max'?max:telegram;if(!channel)fail(503,'Уведомления пока не настроены');return reply(200,await channel.action(b.action))}
     fail(405,'Метод не поддерживается');
    }
    if(route==='/api/admin/config'&&method==='GET')return reply(200,await storage.state());

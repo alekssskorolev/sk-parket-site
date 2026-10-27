@@ -55,7 +55,7 @@ function createTelegram({storage,env=process.env,fetchImpl=telegramFetch,now=()=
  }
  async function flush(max=3){
   if(!ready())return;const s=await storage.telegramSettings();if(!s?.chatId)return;
-  const jobs=await storage.telegramPending();let sent=0;
+  const jobs=(await storage.telegramPending()).filter(j=>!j.provider||j.provider==='telegram');let sent=0;
   for(const job of jobs){if(sent>=max)break;if(job.next>now()||job.leaseUntil>now()||job.expires<=now())continue;
    const lease=randomBytes(16).toString('hex');const claimed=await storage.telegramJob(job.id,p=>{
     if(!p||p.expires<=now()||p.next>now()||p.leaseUntil>now())return {result:false};

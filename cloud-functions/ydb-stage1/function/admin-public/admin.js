@@ -121,7 +121,7 @@ function leadCounts(){const counts={all:leadRows.length,new:0,progress:0,closed:
 function updateLeadBoard(){const counts=leadCounts();for(const b of document.querySelectorAll('[data-lead-count]'))b.querySelector('strong').textContent=String(counts[b.dataset.leadCount]);for(const b of document.querySelectorAll('[data-lead-filter]'))b.textContent=b.dataset.filterLabel+' · '+counts[b.dataset.leadFilter];renderLeadCards()}
 
 function renderLeadBoard(){const p=$('content');p.replaceChildren();const counts=leadCounts();
- const summary=el('div',undefined,'lead-summary');for(const [key,label] of [['new','Новые'],['progress','В работе'],['closed','Закрытые']]){const b=el('button',undefined,'summary-tile '+key+(leadFilter===key?' selected':''));b.dataset.leadCount=key;b.append(el('strong',String(counts[key])),el('span',label));b.onclick=()=>{leadFilter=key;renderLeadBoard()};summary.append(b)}p.append(summary,telegramTools(),notificationTools());
+ const summary=el('div',undefined,'lead-summary');for(const [key,label] of [['new','Новые'],['progress','В работе'],['closed','Закрытые']]){const b=el('button',undefined,'summary-tile '+key+(leadFilter===key?' selected':''));b.dataset.leadCount=key;b.append(el('strong',String(counts[key])),el('span',label));b.onclick=()=>{leadFilter=key;renderLeadBoard()};summary.append(b)}p.append(summary,maxTools(),telegramTools(),notificationTools());
  const toolbar=el('div',undefined,'leads-toolbar'),tabs=el('div',undefined,'lead-filters');for(const [key,label] of [['active','Актуальные'],['all','Все'],['closed','Закрытые']]){const b=el('button',label+' · '+counts[key],'quiet'+(leadFilter===key?' selected':''));b.dataset.leadFilter=key;b.dataset.filterLabel=label;b.setAttribute('aria-pressed',String(leadFilter===key));b.onclick=()=>{leadFilter=key;renderLeadBoard()};tabs.append(b)}
  const search=el('input');search.type='search';search.placeholder='Имя, телефон или текст заявки';search.setAttribute('aria-label','Поиск заявок');search.value=leadSearch;search.oninput=()=>{leadSearch=search.value;renderLeadCards()};const runSearch=()=>{leadSearch=search.value;renderLeadCards()};search.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();runSearch()}};toolbar.append(tabs,search);p.append(toolbar,el('p','Новая — голубая · В работе — светло-жёлтая · Закрыта — светло-красная. Обновление списка каждые 30 секунд.','muted'));const grid=el('div',undefined,'lead-grid');grid.id='lead-grid';p.append(grid);renderLeadCards();}
 function renderLeadCards(){const grid=$('lead-grid');if(!grid)return;grid.replaceChildren();const rank={new:0,progress:1,closed:2};const q=leadSearch.trim().toLowerCase();const rows=leadRows.filter(x=>(leadFilter==='all'||leadFilter==='active'&&x.status!=='closed'||x.status===leadFilter)&&(!q||(x.id+' '+(x.name||'')+' '+x.phone+' '+x.comment+' '+(x.note||'')).toLowerCase().includes(q))).sort((a,b)=>rank[a.status]-rank[b.status]||new Date(b.created)-new Date(a.created)||String(b.id).localeCompare(String(a.id)));
@@ -141,6 +141,26 @@ addEventListener('focus',scheduleLeadSync);
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleLeadSync()});
 try{const s=await api('/api/session');csrf=s.csrf;await start()}catch{/* Login screen; no data accessible without session. */}
 
+function maxTools(){
+ const box=el('section',undefined,'telegram-tools');box.setAttribute('aria-label','Уведомления MAX');
+ const text=el('p','MAX: проверяем подключение…'),actions=el('div',undefined,'actions'),result=el('p');result.setAttribute('role','status');result.style.whiteSpace='pre-line';result.hidden=true;box.append(text,actions,result);
+ const post=action=>api('/api/admin/telegram','POST',{provider:'max',action});
+ const report=message=>{result.hidden=false;result.textContent=message};
+ function button(label,fn){const b=el('button',label,'quiet');b.onclick=async()=>{b.disabled=true;try{await fn()}catch(e){report(e.message)}finally{b.disabled=false}};actions.append(b);return b}
+ async function refresh(){const s=await api('/api/admin/telegram?provider=max');if(!box.isConnected)return;
+  text.textContent=s.connected?'MAX подключён. Уведомления содержат ссылку на админку без контактов клиентов. В очереди: '+s.pending+'.':s.ready?'MAX: подключите свой личный чат для уведомлений о заявках.':'MAX: требуется подключить MAX_BOT_TOKEN из Lockbox к функции.';
+  actions.replaceChildren();
+  button('Проверить соединение MAX',async()=>{report('Проверяем соединение…');const r=await post('diagnose');report(r.correctBot?'Соединение с MAX установлено. Токен бота подтверждён.':'MAX доступен, но токен принадлежит другому боту.');});
+  const pair=button(s.connected?'Изменить получателя MAX':'Подключить личный чат MAX',async()=>{
+   report('Создаём ссылку подключения…');const r=await post('pair');actions.replaceChildren();
+   const link=el('a','Открыть бота MAX','telegram-open');link.href=r.url;link.target='_blank';link.rel='noopener noreferrer';actions.append(link);
+   report('Откройте бота по ссылке и нажмите «Начать». Если диалог уже открыт, отправьте ему команду:\n/start '+r.code+'\nЗатем нажмите «Подтвердить подключение MAX». Ссылка действует 10 минут.');
+   button('Подтвердить подключение MAX',async()=>{const confirmed=await post('confirm');if(confirmed.connected){await refresh();report(confirmed.testSent?'Чат MAX подключён. Проверочное сообщение отправлено.':'Чат MAX подключён, но проверочное сообщение не отправлено. Нажмите «Проверить уведомление MAX».')}else report(confirmed.message)});
+  });pair.disabled=!s.ready;
+  if(s.connected)button('Проверить уведомление MAX',async()=>{await post('test');report('MAX принял проверочное сообщение. Проверьте личный чат с ботом.')});
+ }
+ queueMicrotask(()=>refresh().catch(e=>report('Не удалось проверить MAX: '+e.message)));return box;
+}
 function telegramTools(){
  const box=el('section',undefined,'telegram-tools');box.setAttribute('aria-label','Уведомления Telegram');
  const text=el('p','Telegram: проверяем подключение…'),actions=el('div',undefined,'actions');box.append(text,actions);

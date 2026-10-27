@@ -12,6 +12,7 @@ function createAdminStorage(getDriver,seed){
     ['sk_admin_sessions',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
     ['sk_public_requests',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
     ['sk_telegram_outbox',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
+    ['sk_max_outbox',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
     ['sk_admin_limits',[['id',Types.UTF8],['payload',Types.JSON_DOCUMENT],['expires',Types.TIMESTAMP]],true],
    ]){
     try{await s.describeTable(name);continue}catch(e){if(e.constructor.status!==StatusCode.SCHEME_ERROR)throw e}
@@ -59,11 +60,15 @@ function createAdminStorage(getDriver,seed){
      }
      await s.executeQuery(INSERT_ORDER,insertParams(order),{txId:tx.id});
      await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO sk_public_requests (id,payload,expires) VALUES($id,$payload,$expires);',{$id:V.utf8(requestId),$payload:V.jsonDocument(JSON.stringify({id:order.id,fingerprint,expires})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
-     if(notify)await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO sk_telegram_outbox(id,payload,expires) VALUES($id,$payload,$expires);',{$id:V.utf8(order.id),$payload:V.jsonDocument(JSON.stringify({expires,attempts:0,next:0,leaseUntil:0})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
+     if(notify)await s.executeQuery(`DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO ${notify==='max'?'sk_max_outbox':'sk_telegram_outbox'}(id,payload,expires) VALUES($id,$payload,$expires);`,{$id:V.utf8(order.id),$payload:V.jsonDocument(JSON.stringify({expires,attempts:0,next:0,leaseUntil:0,provider:notify==='max'?'max':'telegram'})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
      await s.commitTransaction({txId:tx.id});return {id:order.id,created:true};
     }catch(e){await s.rollbackTransaction({txId:tx.id}).catch(()=>{});throw e}
    })}catch(e){if(e.constructor.status!==StatusCode.ABORTED||attempt>=4)throw e}
   },
+  async maxPending(){await ensure();return (await query('DECLARE $now AS Timestamp; SELECT id,payload FROM sk_max_outbox WHERE expires>$now ORDER BY expires ASC LIMIT 50;',{$now:V.timestamp(new Date())})).map(x=>({id:x.id,...parse(x.payload)}))},
+  maxJob:(id,fn)=>mutate('sk_max_outbox',id,fn),
+  maxSettings:()=>read('sk_admin_state','max'),
+  maxChange:fn=>mutate('sk_admin_state','max',fn),
   telegramSettings:()=>read('sk_admin_state','telegram'),
   telegramChange:fn=>mutate('sk_admin_state','telegram',fn),
   async telegramPending(){await ensure();return (await query('DECLARE $now AS Timestamp; SELECT id,payload FROM sk_telegram_outbox WHERE expires>$now ORDER BY expires ASC LIMIT 50;',{$now:V.timestamp(new Date())})).map(x=>({id:x.id,...parse(x.payload)}))},
@@ -82,7 +87,7 @@ function createAdminStorage(getDriver,seed){
   },
   async getLead(id){await ensure();const r=await query('DECLARE $id AS Utf8; SELECT id,created_at AS created,updated_at AS updated,name,phone,comment,status,admin_note AS note,estimate FROM orders WHERE id=$id;',{$id:V.utf8(id)});return r[0]?lead(r[0]):null},
   async updateLead(id,status,note){return query('DECLARE $id AS Utf8; DECLARE $status AS Utf8; DECLARE $note AS Utf8; DECLARE $now AS Timestamp; UPDATE orders SET status=$status,admin_note=$note,updated_at=$now WHERE id=$id;',{$id:V.utf8(id),$status:V.utf8(status),$note:V.utf8(note),$now:V.timestamp(new Date())})},
-  async deleteLead(id){return query('DECLARE $id AS Utf8; DELETE FROM orders WHERE id=$id; DELETE FROM sk_telegram_outbox WHERE id=$id;',{$id:V.utf8(id)})},
+  async deleteLead(id){return query('DECLARE $id AS Utf8; DELETE FROM orders WHERE id=$id; DELETE FROM sk_telegram_outbox WHERE id=$id; DELETE FROM sk_max_outbox WHERE id=$id;',{$id:V.utf8(id)})},
  };
 }
 module.exports={createAdminStorage};
