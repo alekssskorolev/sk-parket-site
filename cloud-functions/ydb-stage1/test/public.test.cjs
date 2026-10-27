@@ -4,6 +4,25 @@ const valid=()=>({requestId:ID,name:'Тестовая заявка',phone:'70000
 const ev=(b=valid(),extra={})=>({httpMethod:'POST',path:'/api/leads',headers:{Origin:ORIGIN,'Content-Type':'application/json'},body:JSON.stringify(b),requestContext:{identity:{sourceIp:'192.0.2.7'}},...extra});
 async function fixture(env={}){let version=1;const orders=[],requests=new Map();const engine=await import('../function/engine.mjs');const storage={current:async()=>({version,config:seed}),lookupRequest:async id=>requests.get(id),limit:async()=>true,insertLeadOnce:async(order,id,fingerprint,expires)=>{if(requests.has(id))return {id:requests.get(id).id,created:false};orders.push(order);requests.set(id,{id:order.id,fingerprint,expires});return {id:order.id,created:true}}};const h=createPublicHandler({storage,env:{LEADS_ENABLED:'true',PRIVACY_OPERATOR_CONFIRMED:'yes',CONSENT_VERSION:'fixture-v1',ADMIN_ORIGIN:'https://admin.example.test',...env},calculate:engine.calculate,now:()=>new Date('2026-01-01'),makeId:()=> 'fake-order'});return {h,orders,storage,changeVersion:()=>version++}}
 const data=r=>JSON.parse(r.body);
+for(const origin of [ORIGIN,'https://skparket.ru','https://admin.example.test'])test('public API supports configured site origin '+origin,async()=>{
+ const f=await fixture();
+ for(const path of ['/api/config','/api/gallery']){
+  const r=await f.h(ev(undefined,{path,httpMethod:'GET',headers:{Origin:origin}}));
+  assert.equal(r.statusCode,200);assert.equal(r.headers['Access-Control-Allow-Origin'],origin);assert.equal(r.headers.Vary,'Origin');assert.equal(r.headers['Access-Control-Allow-Credentials'],undefined);
+ }
+ const preflight=await f.h(ev(undefined,{httpMethod:'OPTIONS',headers:{Origin:origin}}));
+ assert.equal(preflight.statusCode,204);assert.equal(preflight.headers['Access-Control-Allow-Origin'],origin);
+ const submitted=await f.h(ev(valid(),{headers:{Origin:origin,'Content-Type':'application/json'}}));
+ assert.equal(submitted.statusCode,201);assert.equal(f.orders.length,1);
+});
+for(const origin of ['http://skparket.ru','https://skparket.ru.evil.test','https://evil.test'])test('public API rejects untrusted origin '+origin,async()=>{
+ const f=await fixture();
+ for(const extra of [{path:'/api/config',httpMethod:'GET'},{httpMethod:'OPTIONS'},{}]){
+  const r=await f.h(ev(valid(),{...extra,headers:{Origin:origin,'Content-Type':'application/json'}}));
+  assert.equal(r.statusCode,403);assert.equal(r.headers['Access-Control-Allow-Origin'],undefined);
+ }
+ assert.equal(f.orders.length,0);
+});
 for(const env of [{},{LEADS_ENABLED:'true'},{LEADS_ENABLED:'true',PRIVACY_OPERATOR_CONFIRMED:'yes'},{LEADS_ENABLED:'true',PRIVACY_OPERATOR_CONFIRMED:'yes',CONSENT_VERSION:'x'}])test('intake defaults closed '+JSON.stringify(env),()=>assert.equal(intakeEnabled(env),false));
 test('policy gate blocks writes even when enabled flag is true',async()=>{const f=await fixture({PRIVACY_OPERATOR_CONFIRMED:'no'});assert.equal((await f.h(ev())).statusCode,503);assert.equal(f.orders.length,0)});
 test('config reads shared published state and declares photos disabled',async()=>{const f=await fixture();f.changeVersion();const r=await f.h(ev(undefined,{path:'/api/config',httpMethod:'GET'}));assert.equal(r.statusCode,200);assert.equal(data(r).version,2);assert.equal(data(r).photosEnabled,false);assert.equal(data(r).consentVersion,'fixture-v1')});
