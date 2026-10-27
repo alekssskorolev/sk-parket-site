@@ -1,7 +1,7 @@
 'use strict';
 const {randomUUID,createHash}=require('node:crypto');
 const {checkedSelection}=require('./app');
-const PUBLIC_ORIGIN='https://alekssskorolev.github.io';
+const PUBLIC_ORIGINS=new Set(['https://alekssskorolev.github.io','https://skparket.ru']);
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const fail=(status,message)=>{throw Object.assign(Error(message),{status,publicError:true})};
 function intakeEnabled(env){return env.LEADS_ENABLED==='true'&&env.PRIVACY_OPERATOR_CONFIRMED==='yes'&&/^[a-zA-Z0-9_-]{3,80}$/.test(env.CONSENT_VERSION||'')}
@@ -17,7 +17,7 @@ function createPublicHandler({storage,telegram,gallery,env=process.env,calculate
   const route=event.queryStringParameters?.route||event.path||event.rawPath||'/health';if(!['/api/config','/api/leads','/api/gallery'].includes(route)&&!route.startsWith('/api/gallery/images/'))return null;
   const method=String(event.httpMethod||'GET').toUpperCase(),headers=Object.fromEntries(Object.entries(event.headers||{}).map(([k,v])=>[k.toLowerCase(),String(v)]));
   const origin=headers.origin,out={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Vary':'Origin'};
-  const allowed=origin===PUBLIC_ORIGIN||origin===env.ADMIN_ORIGIN;if(allowed)out['Access-Control-Allow-Origin']=origin;
+  const allowed=PUBLIC_ORIGINS.has(origin)||origin===env.ADMIN_ORIGIN;if(allowed)out['Access-Control-Allow-Origin']=origin;
   const reply=(statusCode,result)=>({statusCode,headers:out,body:statusCode===204?'':JSON.stringify(result)});
   try{
    if(origin&&!allowed)fail(403,'Запрос с другого сайта запрещён');
