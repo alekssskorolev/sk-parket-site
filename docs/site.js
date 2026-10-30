@@ -23,7 +23,8 @@ function updateBaseHelp(){if(!publicState)return;const b=publicState.config.base
 $('base').addEventListener('change',updateBaseHelp);
 const patternTemplates=Object.fromEntries([...document.querySelectorAll('.pattern-card')].map(card=>[card.querySelector('input').value,card.cloneNode(true)]));
 function fillOptions(id,items,selected){const select=$(id);select.replaceChildren();for(const x of items.filter(x=>x.active)){const o=document.createElement('option');o.value=x.id;o.textContent=x.name;select.append(o)}select.value=selected;if(!select.value)select.selectedIndex=0;}
-function applyConfig(data){const initial=!publicState,previous=publicState;publicState=data;const c=data.config;
+function priceSource(data,stale=false){const node=$('price-source');if(node)node.textContent=(stale?'Не удалось обновить цены. Расчёт по последнему загруженному прайсу: ':'Прайс: ')+'версия '+data.version+' от '+new Date(data.updated).toLocaleDateString('ru-RU')+'.'+(stale?' Уточните стоимость по телефону: +7 911 798-23-06.':'');}
+function applyConfig(data){priceSource(data);const initial=!publicState,previous=publicState;publicState=data;const c=data.config;
  for(const [key,id] of [['woods','wood'],['finishes','finish'],['bases','base'],['foundations','foundation']])fillOptions(id,c[key],initial?c.defaults[key]:$(id).value);
  const selected=initial?c.defaults.patterns:$('pattern').value;fillOptions('pattern',c.patterns,selected);
  const grid=document.querySelector('.pattern-card').parentElement;grid.replaceChildren();
@@ -37,7 +38,7 @@ function applyConfig(data){const initial=!publicState,previous=publicState;publi
  update();
  if(previous&&previous.version!==data.version&&!$('contact-form').classList.contains('submitted')){setSummary();$('form-status').textContent='Цены обновились. При необходимости заново приложите расчёт через кнопку «Обсудить смету». Окончательная смета — после осмотра.';}
 }
-async function refreshConfig(){try{const r=await request('/api/config',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();if(!publicState||publicState.version!==data.version||publicState.leadsEnabled!==data.leadsEnabled||publicState.consentVersion!==data.consentVersion)applyConfig(data);}catch{if(!publicState){$('price').textContent='Расчёт недоступен';$('price-sub').textContent='Интерактивный расчёт временно недоступен. Ниже сохранены ставки с датой публикации. Позвоните: +7 911 798-23-06.';$('discuss').disabled=true;}}}
+async function refreshConfig(){try{const r=await request('/api/config',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json();if(!publicState||publicState.version!==data.version||publicState.leadsEnabled!==data.leadsEnabled||publicState.consentVersion!==data.consentVersion)applyConfig(data);priceSource(data);}catch{if(publicState)priceSource(publicState,true);if(!publicState){$('price').textContent='Расчёт недоступен';$('price-sub').textContent='Интерактивный расчёт временно недоступен. Ниже сохранены ставки с датой публикации. Позвоните: +7 911 798-23-06.';$('discuss').disabled=true;}}}
 const range=$('area-range');
 function syncAreaRange(){const n=Number($('area').value);if(!Number.isFinite(n)||n<1||n>10000)return;const max=Math.max(200,Math.ceil(n/100)*100);range.max=max;range.value=n;range.setAttribute('aria-valuetext',n.toLocaleString('ru-RU')+' м²');$('range-max').textContent=max.toLocaleString('ru-RU')+' м²';range.style.setProperty('--range-fill',((n-1)/(max-1)*100)+'%')}
 range.addEventListener('input',()=>{$('area').value=range.value;syncAreaRange()});$('area').addEventListener('input',syncAreaRange);syncAreaRange();
