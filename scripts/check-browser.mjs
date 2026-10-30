@@ -24,7 +24,7 @@ try{
  await routeCandidate(context);
  // Exclude audit visits from analytics and prevent delivery of any real form submission.
  await context.route(/mc\.yandex\.(ru|com)/,r=>r.abort());
- await context.route('**/api/leads',r=>{mockedSubmissions++;return r.fulfill({status:200,contentType:'application/json',body:'{"ok":true,"id":"seo-mock-only-no-record"}'})});
+ await context.route('**/api/leads',r=>{const headers={'access-control-allow-origin':'https://skparket.ru','access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'Content-Type'};if(r.request().method()==='OPTIONS')return r.fulfill({status:204,headers});mockedSubmissions++;return r.fulfill({status:200,headers,contentType:'application/json',body:'{"ok":true,"id":"seo-mock-only-no-record"}'})});
  await page.goto(url,{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>document.querySelector('#price')?.textContent.includes('₽'),{},{timeout:45000});
  await page.waitForFunction(()=>document.querySelectorAll('#works-track .gallery-has-photos').length>0,{},{timeout:45000});
