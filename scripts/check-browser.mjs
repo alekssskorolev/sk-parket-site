@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const url=process.argv[2]||'https://skparket.ru/',out=process.argv[3]||'seo-evidence/browser';
+const baseline=process.argv[4]==='baseline';
 mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({headless:true});
 try{
@@ -14,8 +15,8 @@ try{
  await page.waitForFunction(()=>document.querySelector('#price')?.textContent.includes('₽'),{},{timeout:45000});
  await page.waitForFunction(()=>document.querySelectorAll('#works-track .gallery-has-photos').length>0,{},{timeout:45000});
  assert.equal(await page.locator('h1').count(),1);
- assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://skparket.ru/');
- assert.equal(await page.locator('meta[name=robots]').count(),0);
+ if(!baseline){assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://skparket.ru/');assert.equal(await page.locator('meta[name=robots]').count(),0);}
+ writeFileSync(out+'/metadata.json',JSON.stringify({baseline,url,title:await page.title(),meta:await page.locator('head meta,head link[rel=canonical]').evaluateAll(es=>es.map(e=>e.outerHTML))},null,2));
  const checks=[];
  for(const width of [320,390,768,1440]){
   await page.setViewportSize({width,height:900});

@@ -23,6 +23,30 @@ jobs:
           npm ci --prefix cloud-functions/ydb-stage1/function --ignore-scripts --no-audit --no-fund
           npm test
           node --test cloud-functions/ydb-stage1/test/*.test.cjs
+  baseline:
+    if: github.event_name == 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install browser test tooling outside the project
+        run: |
+          npm install --prefix "$RUNNER_TEMP/seo-browser" playwright@1.56.1 --ignore-scripts --no-audit --no-fund
+          "$RUNNER_TEMP/seo-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check current public behavior before publication
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
+        run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/baseline baseline
+      - name: Save baseline DOM and browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-baseline-evidence
+          path: seo-evidence/
   production:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: verify
