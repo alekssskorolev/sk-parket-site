@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
+import {readFileSync,mkdirSync,writeFileSync,readdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {canonical,title,description} from './seo.mjs';
 const out=process.argv[2]||'seo-evidence/public';mkdirSync(out,{recursive:true});
@@ -45,4 +45,26 @@ for(const path of ['privacy.html','consent.html']){
 }
 const api='https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net';
 for(const path of ['config','gallery'])assert.equal((await get(path,api+'/api/'+path)).r.status,200);
+
+assert.doesNotMatch(home.body,/data:image\//);
+assert.doesNotMatch(home.body,/Здесь будет фото/);
+assert.equal((home.body.match(/data-gallery-id=/g)||[]).length,21);
+assert.match(home.body,/id="published-rates"/);
+const files=readdirSync(new URL('../docs/assets/seo/',import.meta.url));
+const imageResults=[];let nextImage=0;
+await Promise.all(Array.from({length:6},async()=>{
+ for(;;){
+  const name=files[nextImage++];if(!name)return;
+  const url=canonical+'assets/seo/'+name,r=await fetch(url,{signal:AbortSignal.timeout(45000)});
+  assert.equal(r.status,200,url);
+  const bytes=Buffer.from(await r.arrayBuffer()),expected=readFileSync(new URL('../docs/assets/seo/'+name,import.meta.url));
+  assert.equal(hash(bytes),hash(expected),url);
+  const ext=name.split('.').at(-1),mime={webp:'image/webp',jpg:'image/jpeg',svg:'image/svg+xml'}[ext];
+  assert.ok(r.headers.get('content-type')?.startsWith(mime),url);
+  imageResults.push({url,status:r.status,contentType:r.headers.get('content-type'),cacheControl:r.headers.get('cache-control'),bytes:bytes.length,sha256:hash(bytes)});
+ }
+}));
+writeFileSync(out+'/image-responses.json',JSON.stringify(imageResults,null,2));
+console.log(JSON.stringify({imageFilesChecked:files.length,allStatus200:true,allMimeCorrect:true,allHashesMatch:true,htmlBytes:Buffer.byteLength(home.body),staticCards:21}));
+
 console.log('PASS: production HTML, indexing headers, canonical variants, crawl files, redirects, true 404, legal documents and public API. No leads submitted.');

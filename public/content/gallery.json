@@ -1,0 +1,353 @@
+{
+  "fetchedAt": "2026-10-30T11:52:34.566Z",
+  "source": "https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net/api/gallery",
+  "updated": "2026-10-26T10:27:32.812Z",
+  "items": [
+    {
+      "id": "529d90e2-efa8-456c-b5d2-d9ed7bfd103e",
+      "title": "Дубовая ёлочка в светлой комнате",
+      "description": "Бетонное основание до укладки и дубовый паркет классической ёлочкой.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/86c21134-f926-4f34-b22f-43d8ff69724d",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/6a27f296-4733-489c-a353-8227571c6a13",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "6b031838-08e0-412b-a711-65e813930e11",
+      "title": "Дубовый паркет в просторной гостиной",
+      "description": "Отделка просторной комнаты: от подготовленного фанерного основания до дубового паркета с укладкой в разбежку.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/b43fbe8d-417c-40b5-aa0f-0388984dacfa",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/c3b56946-9b9b-4531-b989-6b34330afbb5",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "99967c7f-ad00-4f3e-90a5-ca2bfd5f42d1",
+      "title": "Художественный паркет из дуба и ореха",
+      "description": "Индивидуальный рисунок: дубовая ёлочка с контрастным ореховым фризом и геометрической розеткой в центре.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/4fd83f3e-9835-428e-9cf1-e2a2fe582608",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/5bb81891-b433-4d63-a730-d067911dc039",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "0c842495-1548-4104-9979-e2b4b3060d4e",
+      "title": "Светлый дуб в разбежку в спальне",
+      "description": "Замены старого линолеума на светлый дубовый паркет с классической укладкой в разбежку.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/dbad3d80-1789-431e-b21d-b44b01b43b89",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/ae24fe2e-f542-4e1e-a141-4ca77625c5d5",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "57b57ae2-11db-4b80-9131-5463f7fb3b6c",
+      "title": "Дубовый паркет рисунком «шашка»",
+      "description": "Замена старого ламината на дубовый паркет с квадратным рисунком и спокойным натуральным оттенком.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/96f37af3-2bcc-4e2f-a733-fc42f8a9f31c",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/1874410a-5fbf-4942-b6b3-6da721f030fc",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "d20a8f84-dee0-4841-83fc-7c1159debf75",
+      "title": "Дубовый паркет в гостиной загородного дома",
+      "description": "Отделка просторной гостиной: натуральный дуб с укладкой в разбежку.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/1eb044d8-111f-4981-808c-111d4dedb411",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/200e2455-2163-48a8-89c0-fed3636153fb",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "2ee57b85-c91f-4ca2-9ee6-c28ed075232c",
+      "title": "Дубовый паркет в мансардной комнате",
+      "description": "Обновления пола мансарды: натуральный дуб с укладкой в разбежку и мягким сатиновым блеском.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/7ff98640-8f0a-4518-87d6-113ea9934fe0",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/c3b552ad-ba02-47be-af8f-5be9d1c46687",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "81543a8b-1ea6-4581-b03e-42da0e0b6418",
+      "title": "Геометрический модуль",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/47b99421-f1ce-43f4-b25e-44a8e9917fd8",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "9eb02c9f-bb3c-494d-9413-b35854def5d3",
+      "title": "Орнамент",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/e3099e56-cfe8-4e30-a491-eadb29a7c4f7",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "5465a583-bb3d-4b2b-a1bf-7a2f0a1b9bf8",
+      "title": "Центральная розетка",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/a0535348-f74b-401e-938f-f5871fecc21e",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "4933b2af-9688-415a-9e40-470a2674b948",
+      "title": "Геометрия",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/96194ad1-3ee9-4072-80d2-c45f94ba14d3",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "548d9071-40c3-4703-b08d-eedd7f075266",
+      "title": "Квадрат",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/57f72ee0-ee09-4a2f-aeda-ca54102fc5f2",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "210c8e35-7e5e-4c46-baaa-98db6b623bc5",
+      "title": "Звезды",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/2c3e68ff-50ac-4370-9b2d-6fa7a6cd1be1",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "522a5550-0726-4192-be61-10596b6cf712",
+      "title": "Цепочка",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/7179fe5a-96b5-478b-8e3e-1c4ffa9d2e50",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "d8199666-0dff-45a1-9510-492c93515350",
+      "title": "Центральная звезда",
+      "description": "",
+      "kind": "project",
+      "mode": "single",
+      "placement": "grid",
+      "before": null,
+      "after": {
+        "path": "/api/gallery/images/525d59df-0749-4854-84dd-52e98ad7f04a",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "cfbf5f12-2270-40cd-853a-67e71652087e",
+      "title": "Прихожая с паркетом в разбежку",
+      "description": "Укладка в разбежку в просторной прихожей с переходом в коридор.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/83ebb4e1-bed8-4007-9821-0bf32268f783",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/61486ceb-35be-4fe9-b939-a0130bd70494",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "18eebbaa-865c-4229-9433-b24c309b26fc",
+      "title": "Дубовая ёлочка в просторном зале",
+      "description": "Классическая укладка ёлочкой в светлом зале с высокими окнами и кирпичной стеной.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/5b5576d6-8525-4a37-ba48-592bc9963c4e",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/86e5251d-25ef-4917-aa67-a796aec3adb2",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "bd6cc313-eaa4-4220-a871-e9396ad5ee5a",
+      "title": "Дубовая ёлочка в гостиной",
+      "description": "Замены старого покрытия на дубовый паркет классической ёлочкой. Натуральный оттенок дерева и спокойный матовый финиш.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/4b9b8b51-c6ee-41f0-bf53-313a393f307a",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/bf4f5ce0-9bc0-4a07-ac2d-86b0cc1599ca",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "bea3e13b-efb6-41a3-9ad1-95ffc3a12979",
+      "title": "Дубовая ёлочка в зимней гостиной",
+      "description": "Бетонное основание и вариант укладки дубовой ёлочки.",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/c3fb8caf-f006-4108-8fd7-7f223f3fa93e",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/8642e100-12c5-4ef9-af05-0f74a04776f9",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "f911d3e6-fe4f-48fd-af77-65b50d07557d",
+      "title": "Дубовый паркет на мансарде",
+      "description": "Старый линолеум и вариант дубового паркета в разбежку",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/bfa48c57-8b45-45d2-916c-2333f4720934",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/85bc794c-a1ca-4228-9d88-b06da5bf4d05",
+        "width": 1200,
+        "height": 896
+      }
+    },
+    {
+      "id": "5859d016-a542-4b0f-b48e-cead55503e0a",
+      "title": "Светлый дуб в зимней комнате",
+      "description": "Cтарый паркет и вариант нового светлого дуба в разбежку",
+      "kind": "project",
+      "mode": "pair",
+      "placement": "carousel",
+      "before": {
+        "path": "/api/gallery/images/7aabd53a-5c29-4ff8-9de6-2b17074ca88d",
+        "width": 1200,
+        "height": 896
+      },
+      "after": {
+        "path": "/api/gallery/images/4e038236-183a-437b-a4f8-6cc779f3c848",
+        "width": 1200,
+        "height": 896
+      }
+    }
+  ]
+}
