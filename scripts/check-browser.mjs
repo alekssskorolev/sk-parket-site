@@ -17,16 +17,18 @@ async function routeCandidate(context){
 const browser=await chromium.launch({headless:true});
 let evidencePage;
 try{
- const context=await browser.newContext(),page=await context.newPage(),errors=[];
+ const context=await browser.newContext(),page=await context.newPage(),errors=[];let mockedSubmissions=0;
+ await page.addInitScript(()=>{window.__galleryReplacementCount=0;addEventListener('DOMContentLoaded',()=>{const track=document.getElementById('works-track');if(track)new MutationObserver(ms=>{window.__galleryReplacementCount+=ms.filter(m=>m.type==='childList').length}).observe(track,{childList:true})},{once:true})});
  evidencePage=page;
  page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR: '+e.message)});
  await routeCandidate(context);
  // Exclude audit visits from analytics and prevent delivery of any real form submission.
  await context.route(/mc\.yandex\.(ru|com)/,r=>r.abort());
- await context.route('**/api/leads',r=>r.fulfill({status:503,contentType:'application/json',body:'{"error":"SEO test: no lead created"}'}));
+ await context.route('**/api/leads',r=>{const headers={'access-control-allow-origin':'https://skparket.ru','access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'Content-Type'};if(r.request().method()==='OPTIONS')return r.fulfill({status:204,headers});mockedSubmissions++;return r.fulfill({status:200,headers,contentType:'application/json',body:'{"ok":true,"id":"seo-mock-only-no-record"}'})});
  await page.goto(url,{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>document.querySelector('#price')?.textContent.includes('₽'),{},{timeout:45000});
  await page.waitForFunction(()=>document.querySelectorAll('#works-track .gallery-has-photos').length>0,{},{timeout:45000});
+ if(candidate){assert.equal(await page.evaluate(()=>window.__galleryReplacementCount),0,'Static gallery should not be rebuilt when revisions match');}
  assert.equal(await page.locator('h1').count(),1);
  if(!baseline){assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://skparket.ru/');assert.equal(await page.locator('meta[name=robots]').count(),0);}
  writeFileSync(out+'/metadata.json',JSON.stringify({baseline,candidate,url,title:await page.title(),meta:await page.locator('head meta,head link[rel=canonical]').evaluateAll(es=>es.map(e=>e.outerHTML))},null,2));
@@ -49,6 +51,12 @@ try{
  await page.locator('#works-track .photo-cell img').first().click();
  await page.locator('#work-dialog').waitFor({state:'visible',timeout:10000});
  await page.keyboard.press('Escape');
+ await page.locator('#real-works-grid .photo-cell img').first().click();
+ await page.locator('#work-dialog').waitFor({state:'visible'});
+ const drawingTitle=await page.locator('#work-photo-caption').textContent();
+ await page.locator('#work-photo-next').click();
+ assert.notEqual(await page.locator('#work-photo-caption').textContent(),drawingTitle);
+ await page.keyboard.press('Escape');
  assert.equal(await page.locator('a[href="tel:+79117982306"]').count()>0,true);
  assert.equal(await page.locator('a[href="mailto:skparket@bk.ru"]').count()>0,true);
  assert.ok(await page.locator('#consent').isChecked());
@@ -57,6 +65,14 @@ try{
  assert.ok(await page.locator('#callback-dialog').isVisible());
  await page.locator('#consent').uncheck();
  assert.equal(await page.locator('#consent').evaluate(e=>e.checkValidity()),false);
+ await page.locator('#phone').fill('+7 000 000-00-00');
+ await page.locator('#client-name').fill('SEO mock');
+ await page.locator('#contact-form button[type=submit]').click();
+ assert.equal(mockedSubmissions,0);
+ await page.locator('#consent').check();
+ await page.locator('#contact-form button[type=submit]').click();
+ await page.locator('#contact-form.submitted').waitFor();
+ assert.equal(mockedSubmissions,1);
  await page.keyboard.press('Escape');
  assert.deepEqual(errors,[]);
 
@@ -102,7 +118,7 @@ try{
  writeFileSync(out+'/dom.html',await page.content());
  writeFileSync(out+'/checks.json',JSON.stringify({url,checks,errors,galleryImages:await page.locator('#works img').count()},null,2));
  await page.screenshot({path:out+'/mobile.png',fullPage:true});
- console.log(JSON.stringify({url,checks,errors,menu:true,lightbox:true,contacts:true,consent:true,noLeadsSubmitted:true},null,2));
+ console.log(JSON.stringify({url,checks,errors,menu:true,lightbox:true,contacts:true,consent:true,noRealLeadsSubmitted:true,mockedLeadSubmissions:mockedSubmissions},null,2));
 }finally{
  if(evidencePage){writeFileSync(out+'/final-dom.html',await evidencePage.content());await evidencePage.screenshot({path:out+'/final-screen.png',fullPage:true});console.log(JSON.stringify({stage:'finally',dialogs:await evidencePage.locator('dialog').evaluateAll(es=>es.map(e=>({id:e.id,open:e.open}))),metadata:await evidencePage.locator('head meta,head link[rel=canonical]').evaluateAll(es=>es.map(e=>e.outerHTML))}));}
  await browser.close()
