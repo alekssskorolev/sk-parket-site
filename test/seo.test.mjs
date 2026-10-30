@@ -43,3 +43,16 @@ test('published portfolio and dated stage rates are generated from public snapsh
  assert.deepEqual(configKeys,['config','fetchedAt','source','updated','version']);
  assert.equal(g.items.filter(x=>!x.description).length,8);
 });
+
+test('minimal business schema matches visible contacts and introduces no unsupported business claims',()=>{
+ const html=read('docs/index.html'),scripts=[...html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
+ assert.equal(scripts.length,1);
+ const data=JSON.parse(scripts[0][1]),[org,service]=data['@graph'];
+ assert.equal(data['@context'],'https://schema.org');
+ assert.deepEqual(data['@graph'].map(x=>x['@type']),['Organization','Service']);
+ assert.equal(org.name,'SK паркет');assert.equal(org.url,canonical);
+ assert.ok(html.includes('href="tel:'+org.telephone+'"'));assert.ok(html.includes('href="mailto:'+org.email+'"'));
+ assert.equal(service.provider['@id'],org['@id']);assert.equal(service.areaServed.name,'Санкт-Петербург');
+ assert.equal(service.url,canonical);
+ assert.doesNotMatch(JSON.stringify(data),/AggregateRating|Review|PostalAddress|LocalBusiness|price|offers/);
+});
