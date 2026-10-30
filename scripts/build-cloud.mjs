@@ -6,6 +6,7 @@ if(readFileSync(new URL('CNAME',dir),'utf8').trim()!=='skparket.ru')throw new Er
 let html=readFileSync(new URL('index.html',pub),'utf8');
 html=html.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-3"');
 writeFileSync(new URL('index.html',dir),productionSeo(renderPublic(html)));
+for(const f of ['favicon.svg','favicon.ico'])copyFileSync(new URL(f,pub),new URL(f,dir));
 for(const f of ['robots.txt','sitemap.xml'])copyFileSync(new URL(f,src),new URL(f,dir));
 copyFileSync(new URL('limestone.css',pub),new URL('limestone.css',dir));mkdirSync(new URL('assets/',dir),{recursive:true});copyFileSync(new URL('assets/hero-parquet.svg',pub),new URL('assets/hero-parquet.svg',dir));
 cpSync(new URL('assets/seo/',pub),new URL('assets/seo/',dir),{recursive:true});
