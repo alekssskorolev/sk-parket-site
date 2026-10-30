@@ -18,7 +18,6 @@ const browser=await chromium.launch({headless:true});
 let evidencePage;
 try{
  const context=await browser.newContext(),page=await context.newPage(),errors=[];
- const observedCards=candidate?true:false;
  await page.addInitScript(()=>{window.__galleryReplacementCount=0;addEventListener('DOMContentLoaded',()=>{const track=document.getElementById('works-track');if(track)new MutationObserver(ms=>{window.__galleryReplacementCount+=ms.filter(m=>m.type==='childList').length}).observe(track,{childList:true})},{once:true})});
  evidencePage=page;
  page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR: '+e.message)});

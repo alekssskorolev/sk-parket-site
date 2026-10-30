@@ -57,10 +57,3 @@ test('minimal business schema matches visible contacts and introduces no unsuppo
  assert.doesNotMatch(JSON.stringify(data),/AggregateRating|Review|PostalAddress|LocalBusiness|price|offers/);
 });
 
-test('matching public gallery revision reuses generated cards instead of rebuilding the DOM',()=>{
- const snapshot=JSON.parse(read('public/content/gallery.json')),html=read('docs/index.html'),js=read('web-cloud/site.js');
- assert.ok(html.includes('data-gallery-updated="'+snapshot.updated+'"'));
- assert.ok(js.includes('section.dataset.galleryUpdated===g.updated'));
- assert.ok(js.indexOf('section.dataset.galleryUpdated===g.updated')<js.indexOf('const cards=[],tiles=[]'));
- assert.ok(js.includes("section.dataset.galleryUpdated=g.updated||''"));
-});
