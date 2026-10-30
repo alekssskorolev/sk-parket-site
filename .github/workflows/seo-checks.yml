@@ -42,7 +42,9 @@ jobs:
       - name: Check current public behavior before publication
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
-        run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/baseline baseline
+        run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/baseline published
+      - name: Verify currently published responsive image files
+        run: node scripts/check-image-assets.mjs seo-evidence/current-images
       - name: Check candidate HTML in an isolated browser route
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
