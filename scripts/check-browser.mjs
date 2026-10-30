@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import {mkdirSync,writeFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const url=process.argv[2]||'https://skparket.ru/',out=process.argv[3]||'seo-evidence/browser';
-const baseline=process.argv[4]==='baseline';
+const baseline=process.argv[4]==='baseline',candidate=process.argv[4]==='candidate';
 mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({headless:true});
 let evidencePage;
@@ -10,6 +10,7 @@ try{
  const context=await browser.newContext(),page=await context.newPage(),errors=[];
  evidencePage=page;
  page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR: '+e.message)});
+ if(candidate)await context.route(url,r=>r.fulfill({status:200,contentType:'text/html; charset=utf-8',body:readFileSync(new URL('../docs/index.html',import.meta.url),'utf8')}));
  // Exclude audit visits from analytics and prevent delivery of any real form submission.
  await context.route(/mc\.yandex\.(ru|com)/,r=>r.abort());
  await context.route('**/api/leads',r=>r.fulfill({status:503,contentType:'application/json',body:'{"error":"SEO test: no lead created"}'}));
@@ -18,7 +19,7 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('#works-track .gallery-has-photos').length>0,{},{timeout:45000});
  assert.equal(await page.locator('h1').count(),1);
  if(!baseline){assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://skparket.ru/');assert.equal(await page.locator('meta[name=robots]').count(),0);}
- writeFileSync(out+'/metadata.json',JSON.stringify({baseline,url,title:await page.title(),meta:await page.locator('head meta,head link[rel=canonical]').evaluateAll(es=>es.map(e=>e.outerHTML))},null,2));
+ writeFileSync(out+'/metadata.json',JSON.stringify({baseline,candidate,url,title:await page.title(),meta:await page.locator('head meta,head link[rel=canonical]').evaluateAll(es=>es.map(e=>e.outerHTML))},null,2));
  const checks=[];
  for(const width of [320,390,768,1440]){
   await page.setViewportSize({width,height:900});

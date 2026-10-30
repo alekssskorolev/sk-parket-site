@@ -41,6 +41,10 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
         run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/baseline baseline
+      - name: Check candidate HTML in an isolated browser route
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
+        run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/candidate candidate
       - name: Save baseline DOM and browser evidence
         if: always()
         uses: actions/upload-artifact@v4
