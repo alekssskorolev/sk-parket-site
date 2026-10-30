@@ -29,3 +29,17 @@ test('crawl files are reproducible and contain only the published commercial can
  assert.match(xml,/xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9"/);
  assert.equal(read('docs/CNAME').trim(),'skparket.ru');
 });
+
+test('published portfolio and dated stage rates are generated from public snapshots',()=>{
+ const html=read('docs/index.html'),g=JSON.parse(read('public/content/gallery.json')),p=JSON.parse(read('public/content/prices.json'));
+ assert.equal((html.match(/data-gallery-id=/g)||[]).length,g.items.length);
+ assert.equal(g.items.length,21);
+ for(const x of g.items){assert.ok(html.includes(x.id));assert.ok(html.includes(x.title));}
+ assert.doesNotMatch(html,/Здесь будет фото|data:image\//);
+ assert.match(html,/id="published-rates"/);assert.ok(html.includes(p.fetchedAt));
+ assert.ok(html.includes('Это не стоимость комплекса «под ключ» за м².'));
+ assert.ok(html.includes('демонтаж')||html.includes('Демонтаж'));
+ const configKeys=Object.keys(p).sort();
+ assert.deepEqual(configKeys,['config','fetchedAt','source','updated','version']);
+ assert.equal(g.items.filter(x=>!x.description).length,8);
+});

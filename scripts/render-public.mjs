@@ -31,6 +31,7 @@ export function renderPublic(html){
  html=html.replace('<section class="section" id="works">',rates+'<section class="section" id="works">');
  html=html.replace('<div class="price" id="price">—</div>','<div class="price" id="price">Для расчёта включите JavaScript</div>');
  html=html.replace('<p class="price-sub" id="price-sub"></p>','<p class="price-sub" id="price-sub">Состав и ставки отдельных этапов приведены ниже. Стоимость можно уточнить по телефону.</p>');
+ html=html.replace('<p class="price-sub" id="price-sub">','<p class="fine" id="price-source">Ставки отдельных этапов ниже приведены со снимком прайса от '+date+'.</p><p class="price-sub" id="price-sub">');
  // Without JS all before/after cards remain reachable in ordinary document flow.
  html=html.replace('</head>','<noscript><style>#works-track{display:grid;height:auto!important;overflow:visible}.gallery-stage .gallery-controls{display:none}.photo-cell picture,.portrait-photo picture,.pattern-card picture{display:contents}</style></noscript></head>');
  if(/Здесь будет фото|Материал, рисунок и выполненные работы добавим/.test(html))throw Error('Production placeholder remains');

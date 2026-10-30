@@ -45,6 +45,13 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
         run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/candidate candidate
+      - name: Measure public Lighthouse with the same profiles
+        run: |
+          npm install --prefix "$RUNNER_TEMP/seo-lighthouse" lighthouse@12.8.2 --ignore-scripts --no-audit --no-fund
+          mkdir -p seo-evidence/lighthouse
+          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/mobile.json --quiet
+          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --preset=desktop --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/desktop.json --quiet
+          node scripts/summarize-lighthouse.mjs seo-evidence/lighthouse
       - name: Save baseline DOM and browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -71,6 +78,13 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
         run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/browser
+      - name: Measure public Lighthouse with the same profiles
+        run: |
+          npm install --prefix "$RUNNER_TEMP/seo-lighthouse" lighthouse@12.8.2 --ignore-scripts --no-audit --no-fund
+          mkdir -p seo-evidence/lighthouse
+          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/mobile.json --quiet
+          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --preset=desktop --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/desktop.json --quiet
+          node scripts/summarize-lighthouse.mjs seo-evidence/lighthouse
       - name: Save actual HTTP responses and browser evidence
         if: always()
         uses: actions/upload-artifact@v4
