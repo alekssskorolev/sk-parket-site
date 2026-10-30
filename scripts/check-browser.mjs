@@ -77,7 +77,7 @@ try{
  assert.deepEqual(errors,[]);
 
  if(!baseline){
-  assert.equal(await page.locator('#published-rates table tbody tr').count()>0,true);
+  if(candidate||!process.argv[4])assert.equal(await page.locator('#published-rates').count(),0);
   await page.locator('img').evaluateAll(es=>es.forEach(e=>e.loading='eager'));
   await page.waitForFunction(()=>[...document.images].every(e=>e.complete&&e.naturalWidth>0),{},{timeout:60000});
   const choices=[];
@@ -97,7 +97,8 @@ try{
   const nojs=await snapshot.newPage();await nojs.goto(url,{waitUntil:'domcontentloaded'});
   assert.equal(await nojs.locator('#works .gallery-has-photos').count(),21);
   assert.equal(await nojs.locator('#works img').count(),34);
-  assert.ok(await nojs.locator('#published-rates time').getAttribute('datetime'));
+  const staticPriceSection=await nojs.locator('#published-rates').count()>0;
+  if(candidate||!process.argv[4])assert.equal(staticPriceSection,false);
   assert.doesNotMatch(await nojs.locator('#works').textContent(),/Здесь будет фото/);
   writeFileSync(out+'/nojs.html',await nojs.content());
   await nojs.screenshot({path:out+'/nojs.png',fullPage:true});await snapshot.close();
@@ -112,7 +113,7 @@ try{
   assert.ok((await offline.locator('#price-sub').textContent()).includes('+7 911 798-23-06'));
   writeFileSync(out+'/api-failure.html',await offline.content());await offline.screenshot({path:out+'/api-failure.png',fullPage:true});await failed.close();
   writeFileSync(out+'/image-choices.json',JSON.stringify(choices,null,2));
-  console.log(JSON.stringify({noJavaScript:{cards:21,images:34,datedRates:true},apiFailure:{cards:21,images:34,estimateDisabled:true},responsiveChoices:choices}));
+  console.log(JSON.stringify({noJavaScript:{cards:21,images:34,staticPriceSection},apiFailure:{cards:21,images:34,estimateDisabled:true},responsiveChoices:choices}));
  }
 
  writeFileSync(out+'/dom.html',await page.content());
