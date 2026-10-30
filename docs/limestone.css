@@ -314,11 +314,5 @@ html{--section-shade:#e8e5dd}
 
 :root{--section-shade:#e8e5dd;--mobile-brightness:.60}
 
-/* Responsive published photographs and an ordinary no-JS price reference. */
+/* Responsive published photographs. */
 .photo-cell picture,.portrait-photo picture,.pattern-card picture{display:contents}
-.static-prices p{margin-top:16px;color:var(--muted)}
-.rates-table-wrap{max-width:100%;overflow-x:auto;margin:24px 0}
-.rates-table{width:100%;border-collapse:collapse;text-align:left;font-size:15px}
-.rates-table caption{text-align:left;margin-bottom:12px;color:var(--muted)}
-.rates-table th,.rates-table td{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-.rates-table td{white-space:nowrap}.rates-table tbody th{font-weight:500}

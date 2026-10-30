@@ -50,7 +50,7 @@ for(const path of ['config','gallery'])assert.equal((await get(path,api+'/api/'+
 assert.doesNotMatch(home.body,/data:image\//);
 assert.doesNotMatch(home.body,/Здесь будет фото/);
 assert.equal((home.body.match(/data-gallery-id=/g)||[]).length,21);
-assert.match(home.body,/id="published-rates"/);
+assert.doesNotMatch(home.body,/published-rates|Как складывается стоимость/);
 await checkImageAssets(out);
 console.log(JSON.stringify({htmlBytes:Buffer.byteLength(home.body),staticCards:21}));
 const schemaScripts=[...home.body.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
