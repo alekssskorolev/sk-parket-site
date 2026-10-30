@@ -4,7 +4,7 @@ import {mkdirSync,readFileSync,writeFileSync,copyFileSync,cpSync} from 'node:fs'
 const root=new URL('../',import.meta.url),dir=new URL('docs/',root),pub=new URL('public/',root),src=new URL('web-cloud/',root);mkdirSync(dir,{recursive:true});
 if(readFileSync(new URL('CNAME',dir),'utf8').trim()!=='skparket.ru')throw new Error('Production SEO build requires the skparket.ru custom domain');
 let html=readFileSync(new URL('index.html',pub),'utf8');
-html=html.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-3"');
+html=html.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-4"');
 writeFileSync(new URL('index.html',dir),productionSeo(renderPublic(html)));
 for(const f of ['favicon.svg','favicon.ico'])copyFileSync(new URL(f,pub),new URL(f,dir));
 for(const f of ['robots.txt','sitemap.xml'])copyFileSync(new URL(f,src),new URL(f,dir));

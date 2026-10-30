@@ -15,7 +15,7 @@ test('production SEO is restricted to the production build and preserves interac
  assert.ok(output.includes('<title>'+title+'</title>'));
  assert.ok(output.includes('content="'+description+'"'));
  assert.equal((output.match(/<h1\b/g)||[]).length,1);
- const expected=source.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-3"');
+ const expected=source.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-4"');
  assert.equal(output,productionSeo(renderPublic(expected)));
  const forms=s=>[...s.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].map(m=>m[0]);assert.deepEqual(forms(output),forms(expected));
  assert.equal(productionSeo(output),output);
