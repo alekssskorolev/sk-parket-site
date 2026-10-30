@@ -15,7 +15,7 @@ test('production SEO is restricted to the production build and preserves interac
  assert.ok(output.includes('<title>'+title+'</title>'));
  assert.ok(output.includes('content="'+description+'"'));
  assert.equal((output.match(/<h1\b/g)||[]).length,1);
- const expected=source.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=limestone-1"');
+ const expected=source.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-2"');
  assert.equal(output,productionSeo(renderPublic(expected)));
  const forms=s=>[...s.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].map(m=>m[0]);assert.deepEqual(forms(output),forms(expected));
  assert.equal(productionSeo(output),output);
@@ -55,4 +55,12 @@ test('minimal business schema matches visible contacts and introduces no unsuppo
  assert.equal(service.provider['@id'],org['@id']);assert.equal(service.areaServed.name,'Санкт-Петербург');
  assert.equal(service.url,canonical);
  assert.doesNotMatch(JSON.stringify(data),/AggregateRating|Review|PostalAddress|LocalBusiness|price|offers/);
+});
+
+test('matching public gallery revision reuses generated cards instead of rebuilding the DOM',()=>{
+ const snapshot=JSON.parse(read('public/content/gallery.json')),html=read('docs/index.html'),js=read('web-cloud/site.js');
+ assert.ok(html.includes('data-gallery-updated="'+snapshot.updated+'"'));
+ assert.ok(js.includes('section.dataset.galleryUpdated===g.updated'));
+ assert.ok(js.indexOf('section.dataset.galleryUpdated===g.updated')<js.indexOf('const cards=[],tiles=[]'));
+ assert.ok(js.includes("section.dataset.galleryUpdated=g.updated||''"));
 });

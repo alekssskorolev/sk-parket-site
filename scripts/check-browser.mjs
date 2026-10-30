@@ -18,6 +18,8 @@ const browser=await chromium.launch({headless:true});
 let evidencePage;
 try{
  const context=await browser.newContext(),page=await context.newPage(),errors=[];
+ const observedCards=candidate?true:false;
+ await page.addInitScript(()=>{window.__galleryReplacementCount=0;addEventListener('DOMContentLoaded',()=>{const track=document.getElementById('works-track');if(track)new MutationObserver(ms=>{window.__galleryReplacementCount+=ms.filter(m=>m.type==='childList').length}).observe(track,{childList:true})},{once:true})});
  evidencePage=page;
  page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR: '+e.message)});
  await routeCandidate(context);
@@ -27,6 +29,7 @@ try{
  await page.goto(url,{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>document.querySelector('#price')?.textContent.includes('₽'),{},{timeout:45000});
  await page.waitForFunction(()=>document.querySelectorAll('#works-track .gallery-has-photos').length>0,{},{timeout:45000});
+ if(candidate){assert.equal(await page.evaluate(()=>window.__galleryReplacementCount),0,'Static gallery should not be rebuilt when revisions match');}
  assert.equal(await page.locator('h1').count(),1);
  if(!baseline){assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://skparket.ru/');assert.equal(await page.locator('meta[name=robots]').count(),0);}
  writeFileSync(out+'/metadata.json',JSON.stringify({baseline,candidate,url,title:await page.title(),meta:await page.locator('head meta,head link[rel=canonical]').evaluateAll(es=>es.map(e=>e.outerHTML))},null,2));

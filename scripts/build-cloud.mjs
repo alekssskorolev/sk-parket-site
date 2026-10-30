@@ -4,7 +4,7 @@ import {mkdirSync,readFileSync,writeFileSync,copyFileSync,cpSync} from 'node:fs'
 const root=new URL('../',import.meta.url),dir=new URL('docs/',root),pub=new URL('public/',root),src=new URL('web-cloud/',root);mkdirSync(dir,{recursive:true});
 if(readFileSync(new URL('CNAME',dir),'utf8').trim()!=='skparket.ru')throw new Error('Production SEO build requires the skparket.ru custom domain');
 let html=readFileSync(new URL('index.html',pub),'utf8');
-html=html.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=limestone-1"');
+html=html.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-2"');
 writeFileSync(new URL('index.html',dir),productionSeo(renderPublic(html)));
 for(const f of ['robots.txt','sitemap.xml'])copyFileSync(new URL(f,src),new URL(f,dir));
 copyFileSync(new URL('limestone.css',pub),new URL('limestone.css',dir));mkdirSync(new URL('assets/',dir),{recursive:true});copyFileSync(new URL('assets/hero-parquet.svg',pub),new URL('assets/hero-parquet.svg',dir));
