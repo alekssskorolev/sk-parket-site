@@ -1,0 +1,30 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {productionSeo,canonical,title,description} from '../scripts/seo.mjs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+test('production SEO is restricted to the production build and preserves the page body',()=>{
+ const source=read('public/index.html'),output=read('docs/index.html');
+ assert.match(source, /noindex,nofollow/);
+ assert.match(read('scripts/build-demo.mjs'), /noindex,nofollow/);
+ assert.match(read('docs/admin.html'), /noindex,nofollow/);
+ assert.doesNotMatch(output, /noindex|nofollow/i);
+ assert.equal((output.match(/rel="canonical"/g)||[]).length,1);
+ assert.ok(output.includes('<link rel="canonical" href="'+canonical+'">'));
+ assert.ok(output.includes('<title>'+title+'</title>'));
+ assert.ok(output.includes('content="'+description+'"'));
+ assert.equal((output.match(/<h1\b/g)||[]).length,1);
+ const expected=source.replaceAll('href="/"','href="./index.html"').replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=limestone-1"');
+ assert.equal(output,productionSeo(expected));
+ assert.equal(output.slice(output.indexOf('<body')),expected.slice(expected.indexOf('<body')));
+ assert.equal(productionSeo(output),output);
+});
+test('crawl files are reproducible and contain only the published commercial canonical',()=>{
+ for(const file of ['robots.txt','sitemap.xml'])assert.equal(read('docs/'+file),read('web-cloud/'+file));
+ const robots=read('docs/robots.txt'),xml=read('docs/sitemap.xml');
+ assert.match(robots,/Sitemap: https:\/\/skparket.ru\/sitemap.xml/);
+ assert.doesNotMatch(robots,/Disallow:|noindex/i);
+ assert.deepEqual([...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m=>m[1]),[canonical]);
+ assert.match(xml,/xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9"/);
+ assert.equal(read('docs/CNAME').trim(),'skparket.ru');
+});
