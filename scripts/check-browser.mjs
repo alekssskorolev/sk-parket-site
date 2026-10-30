@@ -51,6 +51,12 @@ try{
  await page.locator('#works-track .photo-cell img').first().click();
  await page.locator('#work-dialog').waitFor({state:'visible',timeout:10000});
  await page.keyboard.press('Escape');
+ await page.locator('#real-works-grid .photo-cell img').first().click();
+ await page.locator('#work-dialog').waitFor({state:'visible'});
+ const drawingTitle=await page.locator('#work-photo-caption').textContent();
+ await page.locator('#work-photo-next').click();
+ assert.notEqual(await page.locator('#work-photo-caption').textContent(),drawingTitle);
+ await page.keyboard.press('Escape');
  assert.equal(await page.locator('a[href="tel:+79117982306"]').count()>0,true);
  assert.equal(await page.locator('a[href="mailto:skparket@bk.ru"]').count()>0,true);
  assert.ok(await page.locator('#consent').isChecked());
