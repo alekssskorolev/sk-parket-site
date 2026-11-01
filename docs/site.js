@@ -8,17 +8,27 @@ $('copyright-year').textContent=String(new Date().getFullYear());
 function scrollPageToTop(){$('nav').classList.remove('open');$('menu').setAttribute('aria-expanded','false');const target=$('page-top');target.tabIndex=-1;target.focus({preventScroll:true});requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})))}
 document.querySelectorAll('a[href="#page-top"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();scrollPageToTop()}));
 
-// IDs are used only for local deduplication; no lead data is sent to Metrika.
-const reportedLeadGoals=new Set();
-async function trackSavedLead(response,result){
+// IDs and source labels stay in local deduplication; no lead data is sent to Metrika.
+const reportedLeadGoals=new Set(),reportedLeadSources=new Map();
+async function trackSavedLead(response,result,source='callback'){
  if(!response.ok||result?.ok!==true||typeof result.id!=='string'||!result.id.trim())return;
- const key='skparket:metrika:lead_saved:'+result.id;
  const send=()=>{
-  if(reportedLeadGoals.has(key)||typeof window.ym!=='function')return;
-  try{if(localStorage.getItem(key)==='1'){reportedLeadGoals.add(key);return}}catch{}
-  reportedLeadGoals.add(key);
-  try{localStorage.setItem(key,'1')}catch{}
-  window.ym(113925373, 'reachGoal', 'lead_saved');
+  if(typeof window.ym!=='function')return;
+  const sourceKey='skparket:metrika:lead_source:'+result.id;
+  let savedSource=reportedLeadSources.get(result.id);
+  try{savedSource||=localStorage.getItem(sourceKey)}catch{}
+  if(savedSource!=='calculator'&&savedSource!=='callback')savedSource=source==='calculator'?'calculator':'callback';
+  reportedLeadSources.set(result.id,savedSource);
+  try{localStorage.setItem(sourceKey,savedSource)}catch{}
+  for(const goal of [savedSource+'_lead_saved','lead_saved']){
+   // Keep the existing common-goal key to preserve deduplication after upgrades.
+   const key='skparket:metrika:'+goal+':'+result.id;
+   if(reportedLeadGoals.has(key))continue;
+   try{if(localStorage.getItem(key)==='1'){reportedLeadGoals.add(key);continue}}catch{}
+   reportedLeadGoals.add(key);
+   try{localStorage.setItem(key,'1')}catch{}
+   try{window.ym(113925373, 'reachGoal', goal)}catch{}
+  }
  };
  try{
   // Serialize confirmations from different tabs when Web Locks are available.
@@ -28,7 +38,7 @@ async function trackSavedLead(response,result){
 }
 
 let floorPhotos=[];
-let submitting=false,pendingRequestId=null;
+let submitting=false,pendingRequestId=null,leadSource='callback';
 $('contact-form').addEventListener('input',()=>{if(!submitting)pendingRequestId=null});
 function renderFloorPhotos(){const list=$('photo-previews');list.replaceChildren();floorPhotos.forEach((item,index)=>{const li=document.createElement('li');li.className='photo-preview';const img=document.createElement('img');img.src=item.url;img.alt='Фотография пола '+(index+1);img.addEventListener('error',()=>{const fallback=document.createElement('span');fallback.className='preview-unavailable';fallback.textContent='Фото добавлено';img.replaceWith(fallback)});const button=document.createElement('button');button.type='button';button.textContent='×';button.setAttribute('aria-label','Удалить фотографию '+(index+1));button.addEventListener('click',()=>{URL.revokeObjectURL(item.url);floorPhotos.splice(index,1);renderFloorPhotos();$('photo-status').textContent=floorPhotos.length?'Добавлено фотографий: '+floorPhotos.length+'.':'';});const name=document.createElement('small');name.textContent=item.file.name;name.title=item.file.name;li.append(img,button,name);list.append(li)});}
 $('floor-photo-input').addEventListener('change',e=>{let warnings=[];for(const file of e.target.files){if(!file.type.startsWith('image/')&&!/\.(heic|heif)$/i.test(file.name)){warnings.push('Можно добавить только изображения.');continue}if(file.size>10*1024*1024){warnings.push('Фото «'+file.name+'» больше 10 МБ.');continue}if(floorPhotos.some(item=>item.file.name===file.name&&item.file.size===file.size&&item.file.lastModified===file.lastModified))continue;if(floorPhotos.length>=6){warnings.push('Можно добавить не более 6 фотографий.');break}floorPhotos.push({file,url:URL.createObjectURL(file)})}e.target.value='';renderFloorPhotos();$('photo-status').textContent=(floorPhotos.length?'Добавлено фотографий: '+floorPhotos.length+'. ':'')+[...new Set(warnings)].join(' ');});
@@ -112,10 +122,10 @@ let selectedEstimate=null;
 function setSummary(summary=''){if(!summary)selectedEstimate=null;$('selected-summary').textContent=summary;$('summary-box').hidden=!summary;}
 $('remove-summary').addEventListener('click',()=>setSummary());
 function resetSubmission(){if(submitting)return;pendingRequestId=null;$('contact-form').classList.remove('submitted');$('callback-dialog').classList.remove('callback-success');$('form-status').textContent=''}
-function openCallback(summary=''){resetSubmission();setSummary(summary);$('callback-form-slot').append($('contact-form'));$('callback-dialog').showModal();document.body.classList.add('modal-open');}
-$('callback-dialog').addEventListener('close',()=>{resetSubmission();setSummary();$('form-home').append($('contact-form'));document.body.classList.remove('modal-open')});
+function openCallback(summary='',source='callback'){resetSubmission();leadSource=source;setSummary(summary);$('callback-form-slot').append($('contact-form'));$('callback-dialog').showModal();document.body.classList.add('modal-open');}
+$('callback-dialog').addEventListener('close',()=>{resetSubmission();leadSource='callback';setSummary();$('form-home').append($('contact-form'));document.body.classList.remove('modal-open')});
 document.querySelectorAll('.request-call').forEach(b=>b.addEventListener('click',()=>openCallback()));
-$('discuss').addEventListener('click',()=>{if(!estimate)return;selectedEstimate={version:publicState.version,selection:structuredClone(estimate.selection)};openCallback('Ориентировочная смета: '+estimate.area+' м²; '+estimate.pattern+'; '+estimate.base+'. '+estimate.range+'. '+estimate.spec+'. '+estimate.scope+(estimate.own?' Материалы заказчика: '+estimate.own+'.':'')+(floorPhotos.length?' Добавлено фотографий пола: '+floorPhotos.length+'.':''))});
+$('discuss').addEventListener('click',()=>{if(!estimate)return;selectedEstimate={version:publicState.version,selection:structuredClone(estimate.selection)};openCallback('Ориентировочная смета: '+estimate.area+' м²; '+estimate.pattern+'; '+estimate.base+'. '+estimate.range+'. '+estimate.spec+'. '+estimate.scope+(estimate.own?' Материалы заказчика: '+estimate.own+'.':'')+(floorPhotos.length?' Добавлено фотографий пола: '+floorPhotos.length+'.':''),'calculator')});
 function info(title,text){$('info-title').textContent=title;$('info-text').textContent=text;$('info-dialog').showModal()}document.querySelectorAll('.call-demo').forEach(b=>b.addEventListener('click',()=>info('Телефон пока не подключён','Номер исполнителя пока не указан. Для обращения используйте форму обратной связи.')));$('info-contact').addEventListener('click',e=>{if($('callback-dialog').open)e.preventDefault();$('info-dialog').close()});const worksTrack=$('works-track');let worksCards=[...worksTrack.querySelectorAll('.gallery-card')],workIndex=0;
 const galleryNode=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 function syncWorks(){if(!worksCards.length)return;const width=worksCards[0].getBoundingClientRect().width;workIndex=Math.max(0,Math.min(worksCards.length-1,Math.round(worksTrack.scrollLeft/(width+24))));worksTrack.style.height=(worksCards[workIndex].getBoundingClientRect().height+24)+'px';const pair=worksCards[workIndex]?.querySelector('.pair');if(pair)worksTrack.parentElement.style.setProperty('--gallery-photo-height',pair.getBoundingClientRect().height+'px');$('works-prev').disabled=workIndex===0;$('works-next').disabled=workIndex===worksCards.length-1;const controls=$('works-prev').parentElement;controls.hidden=worksCards.length<2;}
@@ -176,6 +186,7 @@ $('contact-form').addEventListener('submit',async e=>{
  $('phone-error').hidden=valid;$('phone').setAttribute('aria-invalid',!valid);if(!valid){$('phone').focus();return}
  if(!$('consent').checked){$('form-status').textContent='Подтвердите согласие на обработку данных.';return}
  pendingRequestId||=crypto.randomUUID();
+ const goalSource=leadSource;
  const payload={requestId:pendingRequestId,name:$('client-name').value.trim(),phone:n,comment:$('comment').value,consent:true,consentVersion:publicState.consentVersion,website:$('website').value,...(selectedEstimate||{}),photos:[]};
  const b=e.submitter||$('contact-form').querySelector('button[type=submit]');submitting=true;b.disabled=true;
  for(const id of ['client-name','phone','comment','consent'])$(id).disabled=true;
@@ -184,7 +195,7 @@ $('contact-form').addEventListener('submit',async e=>{
   const response=await request('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();
   if(!response.ok){if(response.status===409){await refreshConfig();pendingRequestId=null}throw Error(result.error||'Не удалось подтвердить сохранение заявки')}
   if(result.ok!==true||typeof result.id!=='string')throw Error('Не удалось подтвердить сохранение. Повторите отправку.');
-  void trackSavedLead(response,result);
+  void trackSavedLead(response,result,goalSource);
   $('form-status').textContent='Ваша заявка успешно отправлена! Ожидайте звонка мастера в ближайшее рабочее время.';
   $('contact-form').classList.add('submitted');$('callback-dialog').classList.add('callback-success');$('form-status').tabIndex=-1;$('form-status').focus();
   $('client-name').value='';$('phone').value='';$('comment').value='';$('consent').checked=false;pendingRequestId=null;setSummary();
