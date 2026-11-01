@@ -8,6 +8,25 @@ $('copyright-year').textContent=String(new Date().getFullYear());
 function scrollPageToTop(){$('nav').classList.remove('open');$('menu').setAttribute('aria-expanded','false');const target=$('page-top');target.tabIndex=-1;target.focus({preventScroll:true});requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})))}
 document.querySelectorAll('a[href="#page-top"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();scrollPageToTop()}));
 
+// IDs are used only for local deduplication; no lead data is sent to Metrika.
+const reportedLeadGoals=new Set();
+async function trackSavedLead(response,result){
+ if(!response.ok||result?.ok!==true||typeof result.id!=='string'||!result.id.trim())return;
+ const key='skparket:metrika:lead_saved:'+result.id;
+ const send=()=>{
+  if(reportedLeadGoals.has(key)||typeof window.ym!=='function')return;
+  try{if(localStorage.getItem(key)==='1'){reportedLeadGoals.add(key);return}}catch{}
+  reportedLeadGoals.add(key);
+  try{localStorage.setItem(key,'1')}catch{}
+  window.ym(113925373, 'reachGoal', 'lead_saved');
+ };
+ try{
+  // Serialize confirmations from different tabs when Web Locks are available.
+  if(globalThis.navigator?.locks?.request)await navigator.locks.request('skparket:metrika:lead_saved',send);
+  else send();
+ }catch{/* Analytics must never interrupt a successfully saved application. */}
+}
+
 let floorPhotos=[];
 let submitting=false,pendingRequestId=null;
 $('contact-form').addEventListener('input',()=>{if(!submitting)pendingRequestId=null});
@@ -165,6 +184,7 @@ $('contact-form').addEventListener('submit',async e=>{
   const response=await request('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();
   if(!response.ok){if(response.status===409){await refreshConfig();pendingRequestId=null}throw Error(result.error||'Не удалось подтвердить сохранение заявки')}
   if(result.ok!==true||typeof result.id!=='string')throw Error('Не удалось подтвердить сохранение. Повторите отправку.');
+  void trackSavedLead(response,result);
   $('form-status').textContent='Ваша заявка успешно отправлена! Ожидайте звонка мастера в ближайшее рабочее время.';
   $('contact-form').classList.add('submitted');$('callback-dialog').classList.add('callback-success');$('form-status').tabIndex=-1;$('form-status').focus();
   $('client-name').value='';$('phone').value='';$('comment').value='';$('consent').checked=false;pendingRequestId=null;setSummary();
@@ -172,4 +192,3 @@ $('contact-form').addEventListener('submit',async e=>{
  finally{submitting=false;b.disabled=!publicState?.leadsEnabled;for(const id of ['client-name','phone','comment','consent'])$(id).disabled=!publicState?.leadsEnabled}
 });
 refreshConfig();setInterval(()=>{if(document.visibilityState==='visible')refreshConfig()},60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshConfig()});
-
