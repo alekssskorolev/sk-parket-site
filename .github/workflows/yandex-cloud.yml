@@ -76,7 +76,7 @@ jobs:
             ADMIN_PASSWORD=e6q7cg1917m1bgbnuion/e6qofldtgge73ciqn5nd/ADMIN_PASSWORD_V2
             TELEGRAM_BOT_TOKEN=e6qsesqbjgppvd1u31eu/e6qovakr6rgmo5spjbop/TELEGRAM_BOT_TOKEN
             MAX_BOT_TOKEN=e6qel7905g721cv89pa5/e6qdqu7l9m46hrrq9l49/MAX_BOT_TOKEN
-            SMTP_PASSWORD=e6qt2pn7us4hc9n74vm5/e6q0fsmufl9sqh924n2l/SMTP_PASSWORD
+            SMTP_PASSWORD=e6qt2pn7us4hc9n74vm5/e6q45lckt83k3itlj5ku/SMTP_PASSWORD
           environment: |
             GALLERY_BUCKET=skparket-gallery-b1g5jvictf4s63dq76k4
             YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135

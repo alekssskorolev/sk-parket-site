@@ -16,7 +16,7 @@ SMTP: `smtp.mail.ru:465`, TLS с проверкой сертификата. От
 3. Дайте сервисному аккаунту функции `skparket-backend`
    (`ajeo58qnnk9drt1hj0l7`) роль `lockbox.payloadViewer` только на этом секрете.
 4. В workflow `.github/workflows/yandex-cloud.yml` привязка `SMTP_PASSWORD`
-   указывает на секрет `e6qt2pn7us4hc9n74vm5`, версию `e6q0fsmufl9sqh924n2l`
+   указывает на секрет `e6qt2pn7us4hc9n74vm5`, версию `e6q45lckt83k3itlj5ku`
    и ключ `SMTP_PASSWORD`. Это публичные идентификаторы, пароль остаётся в Lockbox.
 5. После попадания изменений в main workflow
    `Deploy skparket-api to Yandex Cloud` подключит пароль из Lockbox.
