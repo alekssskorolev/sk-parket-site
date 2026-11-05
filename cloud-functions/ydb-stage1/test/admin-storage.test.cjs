@@ -4,9 +4,17 @@ const seed=require('../function/config.seed.json');
 test('initial migration handles SDK static statuses, creates only missing tables and seeds in transaction',async()=>{
  const tables=new Set(),calls=[];
  const s={describeTable:async n=>{if(!tables.has(n))throw new SchemeError('missing')},createTable:async(n,t)=>{assert.ok(t.columns.length>=2);tables.add(n)},beginTransaction:async()=>({id:'tx-1'}),executeQuery:async(q,p,tx)=>{calls.push(q);assert.equal(tx.txId,'tx-1');return {resultSets:[]}},commitTransaction:async x=>assert.equal(x.txId,'tx-1'),rollbackTransaction:async()=>{}};
- const d={tableClient:{withSession:async fn=>fn(s)}};const storage=createAdminStorage(async()=>d,seed);await storage.ensure();await storage.ensure();assert.equal(tables.size,6);assert.equal(calls.filter(x=>x.includes('UPSERT')).length,1);
+ const d={tableClient:{withSession:async fn=>fn(s)}};const storage=createAdminStorage(async()=>d,seed);await storage.ensure();await storage.ensure();assert.equal(tables.size,7);assert.equal(calls.filter(x=>x.includes('UPSERT')).length,1);
 });
 test('migration does not hide permission failures as missing table',async()=>{const d={tableClient:{withSession:fn=>fn({describeTable:async()=>{throw Error('forbidden')}})}};await assert.rejects(createAdminStorage(async()=>d,seed).ensure(),/forbidden/)});
+test('email job commits with the order and MAX job, and any email write failure rolls everything back',async()=>{
+ const queries=[];let broken=false,committed=0,rolled=0;
+ const s={describeTable:async()=>{},beginTransaction:async()=>({id:'atomic-email'}),executeQuery:async(q,p,tx)=>{assert.equal(tx.txId,'atomic-email');queries.push(q);if(broken&&q.includes('UPSERT INTO sk_email_outbox'))throw Error('email queue failure');return {resultSets:[]}},commitTransaction:async()=>committed++,rollbackTransaction:async()=>rolled++};
+ const storage=createAdminStorage(async()=>({tableClient:{withSession:fn=>fn(s)}}),seed);await storage.ensure();queries.length=0;committed=0;
+ const order={id:'fixture-email',created:new Date(),name:'Test',phone:'70000000000',comment:'',estimate:null,consentVersion:'fixture'};
+ await storage.insertLeadOnce(order,'email-request','hash',Date.now()+86400000,'max',true);assert.equal(committed,1);assert(queries.some(q=>q.includes('INSERT INTO orders')));assert(queries.some(q=>q.includes('UPSERT INTO sk_max_outbox')));assert(queries.some(q=>q.includes('UPSERT INTO sk_email_outbox')));
+ broken=true;await assert.rejects(storage.insertLeadOnce(order,'email-request-2','hash',Date.now()+86400000,'max',true),/email queue failure/);assert.equal(rolled,1);assert.equal(committed,1);
+});
 test('public request and order commit in the same transaction; no partial acknowledgement',async()=>{
  const queries=[],commits=[],rolled=[];let migrate=true;
  const s={describeTable:async()=>{},beginTransaction:async()=>({id:'atomic-tx'}),executeQuery:async(q,p,tx)=>{assert.equal(tx.txId,'atomic-tx');queries.push(q);return {resultSets:[]}},commitTransaction:async x=>commits.push(x.txId),rollbackTransaction:async x=>rolled.push(x.txId)};

@@ -7,6 +7,7 @@ const {createAdminHandler}=require('./admin-app');
 const {createPublicHandler,intakeEnabled}=require('./public-app');
 const {createTelegram,isTimerEvent}=require('./telegram');
 const {createMax}=require('./max');
+const {createEmail}=require('./email');
 const {createGalleryStorage}=require('./gallery-storage');
 const {createGallery,createObjectStore}=require('./gallery');
 const seed=require('./config.seed.json');
@@ -18,13 +19,14 @@ module.exports.handler=async function(event={},context){
   const gallery=createGallery({storage:galleryStorage,objects,limits:adminStorage});
   const telegram=createTelegram({storage:adminStorage});
   const max=createMax({storage:adminStorage});
+  const email=createEmail({storage:adminStorage});
   const notifications=max.ready()?{ready:max.ready,flush:max.flush}:telegram;
   const legacy=createHandler({storage:raw,...engine});
-  const admin=createAdminHandler({storage:adminStorage,telegram,max,gallery,...engine});
-  const publicAPI=createPublicHandler({storage:adminStorage,telegram:notifications,gallery,...engine});
+  const admin=createAdminHandler({storage:adminStorage,telegram,max,email,gallery,...engine});
+  const publicAPI=createPublicHandler({storage:adminStorage,telegram:notifications,email,gallery,...engine});
   return async(e,c)=>{
    objects.credentials(c);
-   if(isTimerEvent(e)){await Promise.all([telegram.flush(1),max.flush(1),gallery.cleanup().catch(()=>{})]);return {ok:true}}
+   if(isTimerEvent(e)){await Promise.all([telegram.flush(1),max.flush(1),email.flush(1),gallery.cleanup().catch(()=>{})]);return {ok:true}}
    const result=await admin(e,c);if(result)return result;
    const route=e.queryStringParameters?.route||e.path||e.rawPath||'/health';
    if(route==='/health'){try{await raw.check();await adminStorage.ensure();await galleryStorage.ensure();return {statusCode:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify({ok:true,database:'connected',stage:'cloud-site',maxConfigured:!!max.ready(),leadsEnabled:intakeEnabled(process.env)})}}catch{return {statusCode:503,body:JSON.stringify({ok:false,error:'Database unavailable'})}}}
