@@ -179,6 +179,39 @@ async function loadGallery(){try{const r=await request('/api/gallery');if(!r.ok)
 document.querySelectorAll('dialog').forEach(d=>{d.querySelector('.close').addEventListener('click',()=>d.close());d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}})});
 
 async function compressedPhotos(){const photos=[];for(const item of floorPhotos){let bitmap;try{bitmap=await createImageBitmap(item.file)}catch{throw Error('Не удалось прочитать фото «'+item.file.name+'». Удалите его или добавьте JPEG/PNG.')}const ratio=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*ratio);canvas.height=Math.round(bitmap.height*ratio);canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const jpeg=canvas.toDataURL('image/jpeg',.8).split(',')[1];if(jpeg.length>2800000)throw Error('Фото слишком большое. Добавьте уменьшенную копию.');photos.push({data:jpeg});}return photos;}
+// Both callback entry points use this same form, moved into the dialog.
+function formatPhone(value){
+ let digits=value.replace(/\D/g,'');
+ if(value.trim().startsWith('+')||digits.length===11&&/^[78]/.test(digits))digits=digits.slice(1);
+ digits=digits.slice(0,10);
+ return '+7'+(digits.length?' ('+digits.slice(0,3):'')+(digits.length>=3?')':'')+(digits.length>3?' '+digits.slice(3,6):'')+(digits.length>6?'-'+digits.slice(6,8):'')+(digits.length>8?'-'+digits.slice(8,10):'');
+}
+const phoneField=$('phone');
+phoneField.value='+7';
+phoneField.addEventListener('input',()=>{
+ const before=phoneField.value,position=phoneField.selectionStart??before.length;
+ const digitPosition=Math.max(1,before.slice(0,position).replace(/\D/g,'').length);
+ phoneField.value=formatPhone(before);
+ let count=0,caret=phoneField.value.length;
+ for(let i=0;i<phoneField.value.length;i++)if(/\d/.test(phoneField.value[i])&&++count===digitPosition){caret=i+1;break}
+ if(position===before.length)caret=phoneField.value.length;
+ phoneField.setSelectionRange(Math.max(2,caret),Math.max(2,caret));
+ phoneField.removeAttribute('aria-invalid');$('phone-error').hidden=true;
+});
+phoneField.addEventListener('keydown',e=>{
+ const p=phoneField.selectionStart;
+ if(e.key==='Backspace'&&p===phoneField.selectionEnd&&p>2&&/[^\d]/.test(phoneField.value[p-1])){
+  e.preventDefault();let previous=p-1;while(previous>1&&!/\d/.test(phoneField.value[previous]))previous--;
+  if(previous<=1)return;
+  phoneField.value=phoneField.value.slice(0,previous)+phoneField.value.slice(p);phoneField.setSelectionRange(previous,previous);phoneField.dispatchEvent(new Event('input'));
+ }
+});
+phoneField.addEventListener('paste',e=>{
+ const pasted=e.clipboardData?.getData('text')||'',digits=pasted.replace(/\D/g,'');
+ if(digits.length===10||digits.length===11&&/^[78]/.test(digits)){
+  e.preventDefault();phoneField.value=formatPhone(pasted);phoneField.dispatchEvent(new Event('input'));
+ }
+});
 $('contact-form').addEventListener('submit',async e=>{
  e.preventDefault();if(submitting)return;
  if(!publicState?.leadsEnabled){$('form-status').textContent='Форма временно недоступна. Позвоните: +7 911 798-23-06.';return}
@@ -198,7 +231,7 @@ $('contact-form').addEventListener('submit',async e=>{
   void trackSavedLead(response,result,goalSource);
   $('form-status').textContent='Ваша заявка успешно отправлена! Ожидайте звонка мастера в ближайшее рабочее время.';
   $('contact-form').classList.add('submitted');$('callback-dialog').classList.add('callback-success');$('form-status').tabIndex=-1;$('form-status').focus();
-  $('client-name').value='';$('phone').value='';$('comment').value='';$('consent').checked=false;pendingRequestId=null;setSummary();
+  $('client-name').value='';$('phone').value='+7';$('comment').value='';$('consent').checked=false;pendingRequestId=null;setSummary();
  }catch(error){$('form-status').textContent=error.name==='TimeoutError'||error.name==='TypeError'?'Не удалось подтвердить сохранение. Повторите отправку: защита от дублей сохранит одну заявку.':error.message||'Ошибка соединения. Повторите отправку.'}
  finally{submitting=false;b.disabled=!publicState?.leadsEnabled;for(const id of ['client-name','phone','comment','consent'])$(id).disabled=!publicState?.leadsEnabled}
 });
