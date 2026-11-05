@@ -121,7 +121,7 @@ function leadCounts(){const counts={all:leadRows.length,new:0,progress:0,closed:
 function updateLeadBoard(){const counts=leadCounts();for(const b of document.querySelectorAll('[data-lead-count]'))b.querySelector('strong').textContent=String(counts[b.dataset.leadCount]);for(const b of document.querySelectorAll('[data-lead-filter]'))b.textContent=b.dataset.filterLabel+' · '+counts[b.dataset.leadFilter];renderLeadCards()}
 
 function renderLeadBoard(){const p=$('content');p.replaceChildren();const counts=leadCounts();
- const summary=el('div',undefined,'lead-summary');for(const [key,label] of [['new','Новые'],['progress','В работе'],['closed','Закрытые']]){const b=el('button',undefined,'summary-tile '+key+(leadFilter===key?' selected':''));b.dataset.leadCount=key;b.append(el('strong',String(counts[key])),el('span',label));b.onclick=()=>{leadFilter=key;renderLeadBoard()};summary.append(b)}p.append(summary,maxTools(),telegramTools(),notificationTools());
+ const summary=el('div',undefined,'lead-summary');for(const [key,label] of [['new','Новые'],['progress','В работе'],['closed','Закрытые']]){const b=el('button',undefined,'summary-tile '+key+(leadFilter===key?' selected':''));b.dataset.leadCount=key;b.append(el('strong',String(counts[key])),el('span',label));b.onclick=()=>{leadFilter=key;renderLeadBoard()};summary.append(b)}p.append(summary,emailTools(),maxTools(),telegramTools(),notificationTools());
  const toolbar=el('div',undefined,'leads-toolbar'),tabs=el('div',undefined,'lead-filters');for(const [key,label] of [['active','Актуальные'],['all','Все'],['closed','Закрытые']]){const b=el('button',label+' · '+counts[key],'quiet'+(leadFilter===key?' selected':''));b.dataset.leadFilter=key;b.dataset.filterLabel=label;b.setAttribute('aria-pressed',String(leadFilter===key));b.onclick=()=>{leadFilter=key;renderLeadBoard()};tabs.append(b)}
  const search=el('input');search.type='search';search.placeholder='Имя, телефон или текст заявки';search.setAttribute('aria-label','Поиск заявок');search.value=leadSearch;search.oninput=()=>{leadSearch=search.value;renderLeadCards()};const runSearch=()=>{leadSearch=search.value;renderLeadCards()};search.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();runSearch()}};toolbar.append(tabs,search);p.append(toolbar,el('p','Новая — голубая · В работе — светло-жёлтая · Закрыта — светло-красная. Обновление списка каждые 30 секунд.','muted'));const grid=el('div',undefined,'lead-grid');grid.id='lead-grid';p.append(grid);renderLeadCards();}
 function renderLeadCards(){const grid=$('lead-grid');if(!grid)return;grid.replaceChildren();const rank={new:0,progress:1,closed:2};const q=leadSearch.trim().toLowerCase();const rows=leadRows.filter(x=>(leadFilter==='all'||leadFilter==='active'&&x.status!=='closed'||x.status===leadFilter)&&(!q||(x.id+' '+(x.name||'')+' '+x.phone+' '+x.comment+' '+(x.note||'')).toLowerCase().includes(q))).sort((a,b)=>rank[a.status]-rank[b.status]||new Date(b.created)-new Date(a.created)||String(b.id).localeCompare(String(a.id)));
@@ -141,6 +141,13 @@ addEventListener('focus',scheduleLeadSync);
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleLeadSync()});
 try{const s=await api('/api/session');csrf=s.csrf;await start()}catch{/* Login screen; no data accessible without session. */}
 
+function emailTools(){
+ const box=el('section',undefined,'telegram-tools');box.setAttribute('aria-label','Уведомления по почте');
+ const text=el('p','Почта: проверяем подключение…'),test=el('button','Отправить проверочное письмо','quiet');test.disabled=true;box.append(text,test);
+ test.onclick=guarded(async()=>{test.disabled=true;try{await api('/api/admin/telegram','POST',{provider:'email',action:'test'});toast('Почтовый сервер принял письмо. Проверьте входящие и папку «Спам».')}finally{test.disabled=false}});
+ queueMicrotask(async()=>{try{const s=await api('/api/admin/telegram?provider=email');text.textContent=s.ready?'Письма на '+s.recipient+'. Ожидают отправки: '+s.pending+'.':'Почта '+(s.recipient||'')+': подключение ещё не завершено.';test.disabled=!s.ready}catch{text.textContent='Не удалось проверить подключение почты. Обновите страницу.'}});
+ return box;
+}
 function maxTools(){
  const box=el('section',undefined,'telegram-tools');box.setAttribute('aria-label','Уведомления MAX');
  const text=el('p','MAX: проверяем подключение…'),actions=el('div',undefined,'actions'),result=el('p');result.setAttribute('role','status');result.style.whiteSpace='pre-line';result.hidden=true;box.append(text,actions,result);

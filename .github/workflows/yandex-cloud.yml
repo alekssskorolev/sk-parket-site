@@ -45,7 +45,7 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js email.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
           cp -R "$FUNCTION_DIR/admin-public" .deploy/function/
@@ -76,6 +76,7 @@ jobs:
             ADMIN_PASSWORD=e6q7cg1917m1bgbnuion/e6qofldtgge73ciqn5nd/ADMIN_PASSWORD_V2
             TELEGRAM_BOT_TOKEN=e6qsesqbjgppvd1u31eu/e6qovakr6rgmo5spjbop/TELEGRAM_BOT_TOKEN
             MAX_BOT_TOKEN=e6qel7905g721cv89pa5/e6qdqu7l9m46hrrq9l49/MAX_BOT_TOKEN
+            ${{ vars.SKPARKET_SMTP_SECRET_ID != '' && vars.SKPARKET_SMTP_SECRET_VERSION_ID != '' && format('SMTP_PASSWORD={0}/{1}/SMTP_PASSWORD', vars.SKPARKET_SMTP_SECRET_ID, vars.SKPARKET_SMTP_SECRET_VERSION_ID) || '' }}
           environment: |
             GALLERY_BUCKET=skparket-gallery-b1g5jvictf4s63dq76k4
             YDB_ENDPOINT=grpcs://ydb.serverless.yandexcloud.net:2135
@@ -84,6 +85,9 @@ jobs:
             LEADS_ENABLED=true
             PRIVACY_OPERATOR_CONFIRMED=yes
             CONSENT_VERSION=skparket-pd-v3
+            EMAIL_ENABLED=true
+            EMAIL_TO=korolev89@mail.ru
+            SMTP_USER=korolev89@mail.ru
             ADMIN_ORIGIN=https://d5dbi82cmvjpt86kth9a.d8epmcec.apigw.yandexcloud.net
       - name: Verify private health endpoint without creating leads
         env:

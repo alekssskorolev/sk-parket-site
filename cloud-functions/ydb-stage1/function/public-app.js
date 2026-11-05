@@ -12,7 +12,7 @@ function readJson(event,headers){
  let b;try{b=JSON.parse(bytes.toString())}catch{fail(400,'Неверный JSON')}
  if(!b||typeof b!=='object'||Array.isArray(b))fail(400,'Нужен JSON-объект');return b;
 }
-function createPublicHandler({storage,telegram,gallery,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
+function createPublicHandler({storage,telegram,email,gallery,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
  return async(event={})=>{
   const route=event.queryStringParameters?.route||event.path||event.rawPath||'/health';if(!['/api/config','/api/leads','/api/gallery'].includes(route)&&!route.startsWith('/api/gallery/images/'))return null;
   const method=String(event.httpMethod||'GET').toUpperCase(),headers=Object.fromEntries(Object.entries(event.headers||{}).map(([k,v])=>[k.toLowerCase(),String(v)]));
@@ -56,7 +56,7 @@ function createPublicHandler({storage,telegram,gallery,env=process.env,calculate
    const current=await storage.current();let estimate=null;
    if(selection){if(b.version!==current.version)fail(409,'Цены обновились. Пересчитайте стоимость перед отправкой.');estimate={...calculate(current.config,selection),priceVersion:current.version}}
    const order={id:makeId(),created:date,name:normalized.name,phone,comment:normalized.comment,estimate,consentVersion:env.CONSENT_VERSION};
-   const saved=await storage.insertLeadOnce(order,requestId,fingerprint,+date+7*86400000,telegram?.ready()||false);
+   const saved=await storage.insertLeadOnce(order,requestId,fingerprint,+date+7*86400000,telegram?.ready()||false,email?.ready()||false);
    // Notification failure must never turn a committed application into a failed submission.
    if(saved.created&&telegram)await telegram.flush(1).catch(()=>{});
    return reply(saved.created?201:200,{ok:true,id:saved.id,duplicate:!saved.created});
