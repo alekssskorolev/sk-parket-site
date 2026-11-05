@@ -3,10 +3,40 @@ const {randomBytes,createHash}=require('node:crypto');
 const nodemailer=require('nodemailer');
 const address=x=>typeof x==='string'&&/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(x)&&x.length<=254;
 const fail=(status,message)=>{throw Object.assign(Error(message),{status,publicError:true})};
+const money=range=>range.map(x=>Number(x).toLocaleString('ru-RU')).join(' — ')+' ₽';
+const escapeHTML=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function leadText(lead,origin){
- const lines=['Новая заявка на сайте SK Паркет.','','Номер: '+lead.id,'Имя: '+(lead.name||'Не указано'),'Телефон: +'+lead.phone,'Комментарий: '+(lead.comment||'Не указан')];
- if(lead.estimate){const e=lead.estimate;lines.push('','Предварительный расчёт:');if(e.area!==undefined)lines.push('Площадь: '+e.area+' м²');if(Array.isArray(e.total))lines.push('Стоимость: '+e.total.map(x=>Number(x).toLocaleString('ru-RU')).join(' — ')+' ₽');}
- lines.push('','Открыть заявки: '+origin+'/admin');return lines.join('\n');
+ const lines=['Новая заявка на сайте SK Паркет.','','Имя: '+(lead.name||'Не указано'),'Телефон: +'+lead.phone,'Комментарий: '+(lead.comment||'Не указан')];
+ if(lead.estimate){
+  const e=lead.estimate;lines.push('','Предварительный расчёт:');
+  if(e.area!==undefined)lines.push('Площадь: '+e.area+' м²');
+  if(e.pattern)lines.push('Рисунок: '+e.pattern);
+  if(e.base)lines.push('Текущий пол: '+e.base);
+  if(e.spec)lines.push('Материалы и основание: '+e.spec);
+  if(e.selection){lines.push('Паркет клиента: '+(e.selection.ownParquet?'да':'нет'),'Расходники клиента: '+(e.selection.ownSupplies?'да':'нет'));}
+  for(const group of e.groups||[]){
+   lines.push('',group.title+':');
+   for(const item of group.rows||[]){
+    const details=[item.detail,item.quantity!==undefined?'Количество: '+item.quantity+(item.unit?' '+item.unit:''):'',item.excluded?'Материал клиента — не включён':item.pending?'Требуется индивидуальная оценка':Array.isArray(item.cost)?money(item.cost):'Стоимость не указана'].filter(Boolean);
+    lines.push('• '+item.name+' — '+details.join(' · '));
+   }
+  }
+  if(Array.isArray(e.total))lines.push('','Стоимость'+(e.partial?' (известная часть)':'')+': '+money(e.total));
+  if(e.partial)lines.push('Часть работ требует индивидуальной оценки.');
+  if(e.scope?.length)lines.push('',...(Array.isArray(e.scope)?e.scope:[e.scope]));
+  lines.push('','Подробная смета Excel приложена к письму.');
+ }
+ lines.push('','Открыть заявки: '+origin+'/admin','','Номер заявки: '+lead.id);return lines.join('\n');
+}
+function leadHtml(lead,origin){
+ const phone=String(lead.phone).replace(/\D/g,'');
+ const content=escapeHTML(leadText(lead,origin)).replace('Телефон: +'+phone,'Телефон: <a href="tel:+'+phone+'">+'+phone+'</a>');
+ return '<!doctype html><html lang="ru"><meta charset="utf-8"><body><div style="font-family:Arial,sans-serif;white-space:pre-wrap;line-height:1.5">'+content+'</div></body></html>';
+}
+async function leadAttachment(lead){
+ const {leadWorkbook}=await import('./admin-public/lead-export.js');
+ const workbook=leadWorkbook(lead);
+ return {filename:'Заявка-'+String(lead.id).replace(/[^a-zA-Z0-9_-]/g,'')+'-смета.xlsx',content:Buffer.from(await workbook.arrayBuffer()),contentType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
 }
 function createEmail({storage,env=process.env,createTransport=nodemailer.createTransport,now=()=>Date.now()}){
  const ready=()=>env.EMAIL_ENABLED==='true'&&address(env.EMAIL_TO)&&address(env.SMTP_USER)&&/@(?:mail|bk|list|inbox|internet)\.ru$/i.test(env.SMTP_USER)&&typeof env.SMTP_PASSWORD==='string'&&env.SMTP_PASSWORD.length>0&&/^https:\/\/[a-z0-9.-]+$/.test(env.ADMIN_ORIGIN||'');
@@ -15,7 +45,8 @@ function createEmail({storage,env=process.env,createTransport=nodemailer.createT
   const transport=createTransport({host:'smtp.mail.ru',port:465,secure:true,auth:{user:env.SMTP_USER,pass:env.SMTP_PASSWORD},connectionTimeout:3000,greetingTimeout:3000,socketTimeout:5000,dnsTimeout:2000,tls:{minVersion:'TLSv1.2',rejectUnauthorized:true},logger:false,debug:false,disableFileAccess:true,disableUrlAccess:true});
   try{
    const id=lead?createHash('sha256').update(lead.id).digest('hex'):randomBytes(16).toString('hex');
-   const result=await transport.sendMail({from:{name:'SK Паркет',address:env.SMTP_USER},to:env.EMAIL_TO,subject:lead?'Новая заявка — SK Паркет':'Проверка почты — SK Паркет',messageId:'<skparket-'+id+'@'+env.SMTP_USER.split('@')[1]+'>',text:lead?leadText(lead,env.ADMIN_ORIGIN):'SK Паркет: проверка уведомлений. Новая заявка не создавалась.\n\nОткрыть заявки: '+env.ADMIN_ORIGIN+'/admin'});
+   const extra=lead?{html:leadHtml(lead,env.ADMIN_ORIGIN),...(lead.estimate?{attachments:[await leadAttachment(lead)]}:{})}:{};
+   const result=await transport.sendMail({...extra,from:{name:'SK Паркет',address:env.SMTP_USER},to:env.EMAIL_TO,subject:lead?'Новая заявка — SK Паркет':'Проверка почты — SK Паркет',messageId:'<skparket-'+id+'@'+env.SMTP_USER.split('@')[1]+'>',text:lead?leadText(lead,env.ADMIN_ORIGIN):'SK Паркет: проверка уведомлений. Новая заявка не создавалась.\n\nОткрыть заявки: '+env.ADMIN_ORIGIN+'/admin'});
    if(!result.accepted?.some(x=>String(x).toLowerCase()===env.EMAIL_TO.toLowerCase()))throw Error('Not accepted');
   }catch{fail(503,'Почтовый сервер не принял письмо. Проверьте пароль приложения и повторите позже.');}
   finally{transport.close();}
@@ -46,4 +77,4 @@ function createEmail({storage,env=process.env,createTransport=nodemailer.createT
  }
  return {ready,status,action,flush};
 }
-module.exports={createEmail,leadText};
+module.exports={createEmail,leadText,leadHtml};
