@@ -44,7 +44,7 @@ function createAdminHandler({storage,telegram,max,email,gallery,hero,priceSync,e
    if(write&&h.origin!==origin)fail(403,'Запрос с другого сайта запрещён');
    if(assets[route]&&['GET','HEAD'].includes(method)){
     const module=event.queryStringParameters?.module;
-    const selected=route==='/gallery-admin.js'&&module==='price-sync'?'price-sync-admin.js':route==='/gallery-admin.js'&&module==='hero'?'hero-admin.js':route==='/gallery-admin.js'&&module==='hero-preview'?'hero-preview.html':route==='/engine.js'&&module==='hero'?'hero-display.js':route==='/engine.js'&&module==='hero-preview'?'hero-preview.js':assets[route];
+    const selected=route==='/gallery-admin.js'&&module==='item-sections'?'item-sections.js':route==='/gallery-admin.js'&&module==='price-sync'?'price-sync-admin.js':route==='/gallery-admin.js'&&module==='hero'?'hero-admin.js':route==='/gallery-admin.js'&&module==='hero-preview'?'hero-preview.html':route==='/engine.js'&&module==='hero'?'hero-display.js':route==='/engine.js'&&module==='hero-preview'?'hero-preview.js':assets[route];
     if(selected==='hero-preview.html'){
      out['X-Frame-Options']='SAMEORIGIN';out['Content-Security-Policy']=out['Content-Security-Policy'].replace("frame-ancestors 'none'","frame-ancestors 'self'").replace("img-src 'self' data: blob:","img-src 'self' data: blob: https://skparket.ru");
     }
