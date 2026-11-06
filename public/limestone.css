@@ -246,6 +246,7 @@ html .services{background:var(--page);border-top:1px solid var(--line)}
 #hero .illustration{color:#494137}
 }
 @media(min-width:700px){
+#hero .facts{font-size:18px}
 #hero .hero-title{font-size:clamp(30px,3.333vw,48px);max-width:100%;letter-spacing:-1.1px;line-height:1.14}
 #hero .hero-service{white-space:nowrap;text-wrap:nowrap}
 #hero .hero-city{white-space:nowrap!important}
