@@ -59,3 +59,16 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 
 /* Keep site navigation beside logout without disturbing the admin session. */
 .header-actions{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}.header-actions .site-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 16px;border:1px solid var(--line);border-radius:7px;font:inherit;line-height:1.4;white-space:nowrap;text-decoration:none}.header-actions .site-link:hover{filter:brightness(.96)}
+
+.hero-editor-tabs,.hero-editor-actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+.hero-editor-tabs [aria-selected=true],.hero-editor-tabs [aria-pressed=true]{background:var(--blue);color:#fff;border-color:var(--blue)}
+.hero-editor-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}
+.hero-editor-controls{padding:20px;background:#fff;border:1px solid var(--line);border-radius:10px}
+.hero-editor-controls input[type=range]{padding:0;accent-color:var(--blue);min-height:36px;border:0}
+.hero-slider-title{display:flex;justify-content:space-between;gap:12px}.hero-slider-title output{font-variant-numeric:tabular-nums;color:var(--blue)}
+.hero-image-name{overflow-wrap:anywhere;font-size:13px}.hero-editor-controls>button{margin:0 0 18px}
+.hero-preview-stage{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#faf9f6;max-width:100%}
+.hero-preview-stage iframe{display:block;position:absolute;left:0;top:0;transform-origin:top left;border:0;max-width:none}
+.hero-editor-view{position:sticky;top:20px;min-width:0}
+@media(max-width:1100px){.hero-editor-layout{grid-template-columns:1fr}.hero-editor-view{position:static;order:-1}.hero-editor-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}.hero-editor-controls label{min-width:0}.hero-editor-controls .hero-editor-actions,.hero-editor-controls>p{grid-column:1/-1}}
+@media(max-width:500px){.hero-editor-controls{grid-template-columns:1fr;padding:16px}.hero-editor-controls input[type=file]{font-size:12px}.hero-editor-actions button{flex:1 1 160px}}

@@ -2,8 +2,9 @@
 const {TableDescription,Column,Types,TypedValues:V,TypedData,StatusCode}=require('ydb-sdk');
 const parse=x=>typeof x==='string'?JSON.parse(x):x;
 const rows=r=>r.resultSets?.[0]?TypedData.createNativeObjects(r.resultSets[0]):[];
+const {heroRefs}=require('./hero');
 const initial=()=>({revision:1,draft:[],published:null,gcCursor:''});
-const refs=s=>new Set([...s.draft,...(s.published?.items||[])].flatMap(x=>[x.before,x.after]).filter(Boolean));
+const refs=s=>new Set([...heroRefs(s.hero),...[...s.draft,...(s.published?.items||[])].flatMap(x=>[x.before,x.after]).filter(Boolean)]);
 function createGalleryStorage(getDriver){
  let ready;
  async function ensure(){if(!ready)ready=(async()=>{const d=await getDriver();await d.tableClient.withSession(async s=>{

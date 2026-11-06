@@ -19,13 +19,13 @@ function createObjectStore({env=process.env,fetchImpl=fetch}={}){
  }
  return {ready,credentials,put:(id,data)=>call(id,'PUT',data),get:id=>call(id,'GET'),delete:id=>call(id,'DELETE')};
 }
-async function convertImage(data){
+async function convertImage(data,device=null){
  if(typeof data!=='string'||data.length<16||data.length>1900000||data.length%4||!/^[A-Za-z0-9+/]+={0,2}$/.test(data))fail(422,'Не удалось прочитать фотографию. Добавьте JPEG, PNG или WebP.');
  const input=Buffer.from(data,'base64');if(input.length>1400000)fail(413,'Фотография слишком большая. Попробуйте уменьшенную копию.');
  try{const image=imageEngine()(input,{limitInputPixels:16000000,failOn:'warning'}),meta=await image.metadata();
   if(!['jpeg','png','webp'].includes(meta.format)||meta.pages>1||meta.width<320||meta.height<240)fail(422,'Нужно статичное фото JPEG, PNG или WebP размером от 320 × 240 пикселей.');
-  const {data:bytes,info}=await image.rotate().resize({width:2000,height:2000,fit:'inside',withoutEnlargement:true}).flatten({background:'#ffffff'}).webp({quality:86,effort:4}).toBuffer({resolveWithObject:true});
-  if(bytes.length>1800000)fail(413,'Фото слишком сложное для загрузки. Попробуйте уменьшенную копию.');return {bytes,width:info.width,height:info.height};
+  const {data:bytes,info}=await image.rotate().resize({width:device==='mobile'?960:device==='desktop'?2400:2000,height:device==='mobile'?1600:2000,fit:'inside',withoutEnlargement:true}).flatten({background:'#ffffff'}).webp({quality:device?80:86,effort:4}).toBuffer({resolveWithObject:true});
+  if(bytes.length>(device==='mobile'?250000:device==='desktop'?650000:1800000))fail(413,'Фото слишком сложное для загрузки. Попробуйте уменьшенную копию.');return {bytes,width:info.width,height:info.height};
  }catch(e){if(e.publicError)throw e;fail(422,'Файл повреждён или имеет неподдерживаемый формат. Нужен JPEG, PNG или WebP.');}
 }
 function createGallery({storage,objects=createObjectStore(),limits,now=()=>Date.now(),makeId=randomUUID}){
@@ -43,8 +43,8 @@ function createGallery({storage,objects=createObjectStore(),limits,now=()=>Date.
  }
  async function save(revision,items){await storage.mutate(async(s,read)=>{if(s.revision!==revision)fail(409,'Галерея изменена в другой вкладке. Обновите её перед сохранением.');s.draft=await validate(items,read);s.revision++});return state()}
  async function publish(revision){if(!ready())fail(503,'Хранилище фотографий пока не настроено');await storage.mutate(async(s,read)=>{if(s.revision!==revision)fail(409,'Галерея изменена. Сначала обновите её.');const items=await validate(s.draft,read,true);s.revision++;s.published={revision:s.revision,updated:new Date(now()).toISOString(),items}});return state()}
- async function upload(data){if(!ready())fail(503,'Хранилище фотографий пока не настроено');if(limits&&!await limits.limit('gallery-upload',120,3600000,now()))fail(429,'Слишком много загрузок. Повторите позже.');
-  const image=await convertImage(data),id=makeId(),m={id,width:image.width,height:image.height,bytes:image.bytes.length,created:now(),status:'uploading'};
+ async function upload(data,heroDevice=null){if(heroDevice!==null&&!['desktop','mobile'].includes(heroDevice))fail(422,'Неверный тип экрана');if(!ready())fail(503,'Хранилище фотографий пока не настроено');if(limits&&!await limits.limit('gallery-upload',120,3600000,now()))fail(429,'Слишком много загрузок. Повторите позже.');
+  const image=await convertImage(data,heroDevice),id=makeId(),m={id,heroDevice,width:image.width,height:image.height,bytes:image.bytes.length,created:now(),status:'uploading'};
   await storage.createMedia(m);try{await objects.put(id,image.bytes);return await storage.readyMedia(id)}catch(e){await remove(id).catch(()=>{});throw e}
  }
  async function remove(id){if(!ID.test(id||''))fail(404,'Фотография не найдена');const m=await storage.claimDelete(id);if(!m)fail(409,'Фотография используется в галерее');await objects.delete(id);await storage.deleteMedia(id);return {ok:true}}
@@ -53,7 +53,7 @@ function createGallery({storage,objects=createObjectStore(),limits,now=()=>Date.
    const image=m=>({id:m.id,width:m.width,height:m.height,path:'/api/gallery/images/'+m.id});items.push({id:x.id,title:x.title,description:x.description,kind:x.kind,mode,placement:x.placement||'carousel',before:mode==='pair'?image(b):null,after:image(a)});
   }return {configured:true,updated:s.published.updated,items};
  }
- async function image(id,privatePreview=false){if(!ID.test(id||''))fail(404,'Фотография не найдена');if(!privatePreview){const s=await storage.state();if(!s.published?.items.some(x=>x.visible&&((x.mode!=='single'&&x.before===id)||x.after===id)))fail(404,'Фотография не найдена')}
+ async function image(id,privatePreview=false){if(!ID.test(id||''))fail(404,'Фотография не найдена');if(!privatePreview){const s=await storage.state();const heroImages=[...Object.values(s.hero?.published?.config||{}),...Object.values(s.hero?.previous?.config||{})].map(x=>x.image);if(!heroImages.includes(id)&&!s.published?.items.some(x=>x.visible&&((x.mode!=='single'&&x.before===id)||x.after===id)))fail(404,'Фотография не найдена')}
   const m=await storage.media(id);if(!m||m.status!=='ready')fail(404,'Фотография не найдена');return {data:await objects.get(id),width:m.width,height:m.height};
  }
  async function cleanup(){if(!ready())return;const s=await storage.state(),old=await storage.oldMedia(now()-86400000,s.gcCursor);for(const m of old)await remove(m.id).catch(()=>{});await storage.mutate(p=>{p.gcCursor=old.length===1?old.at(-1).id:''})}

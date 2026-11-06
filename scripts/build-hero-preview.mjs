@@ -1,0 +1,5 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const root=new URL('../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
+const html=read('public/index.html').replace(/<noscript>[\s\S]*?<\/noscript>/g,''),styles=[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(x=>x[1]).join('\n');
+const header=html.match(/<header\b[\s\S]*?<\/header>/)[0].replace(/src="\.\/(assets\/[^"]+)"/g,(_,file)=>'src="data:image/svg+xml;base64,'+readFileSync(new URL('public/'+file,root)).toString('base64')+'"'),hero=html.match(/<section\b[^>]*\bid="hero"[^>]*>[\s\S]*?<\/section>/)[0];
+writeFileSync(new URL('cloud-functions/ydb-stage1/function/admin-public/hero-preview.html',root),'<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Предпросмотр первого экрана</title><style>'+styles+'\n'+read('public/limestone.css')+'\nbody{margin:0}html{scrollbar-width:none}::-webkit-scrollbar{display:none}</style><script type="module" src="/engine.js?module=hero-preview"></script></head><body>'+header+'<main>'+hero+'</main></body></html>');

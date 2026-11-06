@@ -12,7 +12,7 @@ function readJson(event,headers){
  let b;try{b=JSON.parse(bytes.toString())}catch{fail(400,'Неверный JSON')}
  if(!b||typeof b!=='object'||Array.isArray(b))fail(400,'Нужен JSON-объект');return b;
 }
-function createPublicHandler({storage,telegram,email,gallery,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
+function createPublicHandler({storage,telegram,email,gallery,hero,env=process.env,calculate,now=()=>new Date(),makeId=()=>randomUUID()}){
  return async(event={})=>{
   const route=event.queryStringParameters?.route||event.path||event.rawPath||'/health';if(!['/api/config','/api/leads','/api/gallery'].includes(route)&&!route.startsWith('/api/gallery/images/'))return null;
   const method=String(event.httpMethod||'GET').toUpperCase(),headers=Object.fromEntries(Object.entries(event.headers||{}).map(([k,v])=>[k.toLowerCase(),String(v)]));
@@ -25,6 +25,7 @@ function createPublicHandler({storage,telegram,email,gallery,env=process.env,cal
     if(!allowed)fail(403,'Источник не разрешён');
     out['Access-Control-Allow-Methods']='GET, POST, OPTIONS';out['Access-Control-Allow-Headers']='Content-Type';out['Access-Control-Max-Age']='600';return reply(204,null);
    }
+   if(route==='/api/gallery'&&method==='GET'&&event.queryStringParameters?.view==='hero'){out['Cache-Control']='public, max-age=60, stale-while-revalidate=30';return reply(200,hero?await hero.manifest():null)}
    if(route==='/api/gallery'&&method==='GET')return reply(200,gallery?await gallery.manifest():{configured:false,items:[]});
    if(route.startsWith('/api/gallery/images/')&&method==='GET'){
     if(!gallery)fail(404,'Фотография не найдена');const image=await gallery.image(route.slice('/api/gallery/images/'.length));return {statusCode:200,headers:{...out,'Content-Type':'image/webp','Cache-Control':'public, max-age=300'},body:image.data.toString('base64'),isBase64Encoded:true};

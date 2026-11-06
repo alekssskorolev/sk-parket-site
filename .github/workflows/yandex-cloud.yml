@@ -7,6 +7,7 @@ on:
       - 'web-cloud/**'
       - 'docs/**'
       - 'scripts/build-cloud.mjs'
+      - 'scripts/build-hero-preview.mjs'
       - '.github/workflows/yandex-cloud.yml'
   workflow_dispatch:
 permissions:
@@ -37,7 +38,7 @@ jobs:
       - name: Verify reproducible cloud site
         run: |
           node scripts/build-cloud.mjs
-          git diff --exit-code -- docs
+          git diff --exit-code -- docs cloud-functions/ydb-stage1/function/admin-public/hero-preview.html cloud-functions/ydb-stage1/function/admin-public/hero-display.js
       - name: Install pinned dependencies and run tests
         run: |
           npm ci --prefix "$FUNCTION_DIR" --ignore-scripts --no-audit --no-fund
@@ -45,7 +46,7 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js email.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js email.js hero.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
           cp -R "$FUNCTION_DIR/admin-public" .deploy/function/
@@ -120,7 +121,7 @@ jobs:
                 await new Promise(resolve => setTimeout(resolve, 2500));
               }
             }
-            for (const [path, expected] of [['/admin', 200], ['/admin.js', 200], ['/gallery-admin.js', 200], ['/api/admin/gallery', 401], ['/api/session', 401], ['/api/admin/leads', 401], ['/api/admin/config', 401]]) {
+            for (const [path, expected] of [['/admin', 200], ['/admin.js', 200], ['/gallery-admin.js', 200], ['/api/admin/gallery', 401], ['/api/admin/gallery?view=hero', 401], ['/gallery-admin.js?module=hero', 200], ['/engine.js?module=hero', 200], ['/api/session', 401], ['/api/admin/leads', 401], ['/api/admin/config', 401]]) {
               const response = await stableFetch(base + path);
               if (response.status !== expected) throw new Error(path + ': expected ' + expected + ', received ' + response.status);
               console.log(path + ': ' + response.status);
@@ -132,6 +133,12 @@ jobs:
             const config = await configResponse.json();
             if (config.leadsEnabled !== true || config.consentVersion !== 'skparket-pd-v3' || config.photosEnabled !== false) throw new Error('Intake configuration is incorrect');
             if (configResponse.headers.get('access-control-allow-origin') !== 'https://alekssskorolev.github.io') throw new Error('Public CORS configuration is incorrect');
+            const heroResponse = await stableFetch(base + '/api/gallery?view=hero');
+            const hero = await heroResponse.json();
+            if (!heroResponse.ok || !hero.desktop || !hero.mobile || typeof hero.revision !== 'number') throw new Error('Published hero settings unavailable');
+            const preview = await stableFetch(base + '/gallery-admin.js?module=hero-preview');
+            if (!preview.ok || !preview.headers.get('content-type')?.startsWith('text/html') || preview.headers.get('x-frame-options') !== 'SAMEORIGIN') throw new Error('Hero preview route unavailable');
+            console.log('Hero editor assets and public manifest are available; private settings require authentication.');
             console.log('Public form is enabled with versioned consent. No leads created by workflow.');
             console.log('Function is private; admin data requires a valid session.');
           })().catch(error => {console.error(error.message);process.exitCode = 1;});
