@@ -121,7 +121,7 @@ jobs:
                 await new Promise(resolve => setTimeout(resolve, 2500));
               }
             }
-            for (const [path, expected] of [['/admin', 200], ['/admin.js', 200], ['/gallery-admin.js', 200], ['/api/admin/gallery', 401], ['/api/session', 401], ['/api/admin/leads', 401], ['/api/admin/config', 401]]) {
+            for (const [path, expected] of [['/admin', 200], ['/admin.js', 200], ['/gallery-admin.js', 200], ['/api/admin/gallery', 401], ['/api/admin/gallery?view=hero', 401], ['/gallery-admin.js?module=hero', 200], ['/engine.js?module=hero', 200], ['/api/session', 401], ['/api/admin/leads', 401], ['/api/admin/config', 401]]) {
               const response = await stableFetch(base + path);
               if (response.status !== expected) throw new Error(path + ': expected ' + expected + ', received ' + response.status);
               console.log(path + ': ' + response.status);
@@ -133,6 +133,12 @@ jobs:
             const config = await configResponse.json();
             if (config.leadsEnabled !== true || config.consentVersion !== 'skparket-pd-v3' || config.photosEnabled !== false) throw new Error('Intake configuration is incorrect');
             if (configResponse.headers.get('access-control-allow-origin') !== 'https://alekssskorolev.github.io') throw new Error('Public CORS configuration is incorrect');
+            const heroResponse = await stableFetch(base + '/api/gallery?view=hero');
+            const hero = await heroResponse.json();
+            if (!heroResponse.ok || !hero.desktop || !hero.mobile || typeof hero.revision !== 'number') throw new Error('Published hero settings unavailable');
+            const preview = await stableFetch(base + '/gallery-admin.js?module=hero-preview');
+            if (!preview.ok || !preview.headers.get('content-type')?.startsWith('text/html') || preview.headers.get('x-frame-options') !== 'SAMEORIGIN') throw new Error('Hero preview route unavailable');
+            console.log('Hero editor assets and public manifest are available; private settings require authentication.');
             console.log('Public form is enabled with versioned consent. No leads created by workflow.');
             console.log('Function is private; admin data requires a valid session.');
           })().catch(error => {console.error(error.message);process.exitCode = 1;});
