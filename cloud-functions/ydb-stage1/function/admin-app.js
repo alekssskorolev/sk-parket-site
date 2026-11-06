@@ -10,7 +10,7 @@ const SAFE={
  'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
 };
-function createAdminHandler({storage,telegram,max,email,gallery,hero,env=process.env,validateConfig,now=()=>Date.now()}){
+function createAdminHandler({storage,telegram,max,email,gallery,hero,priceSync,env=process.env,validateConfig,now=()=>Date.now()}){
  let verifier;
  const cookie=(value,age)=>`${COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${age}`;
  function passwordReady(){return typeof env.ADMIN_PASSWORD==='string'&&env.ADMIN_PASSWORD.length>=14&&env.ADMIN_PASSWORD.length<=256}
@@ -44,7 +44,7 @@ function createAdminHandler({storage,telegram,max,email,gallery,hero,env=process
    if(write&&h.origin!==origin)fail(403,'Запрос с другого сайта запрещён');
    if(assets[route]&&['GET','HEAD'].includes(method)){
     const module=event.queryStringParameters?.module;
-    const selected=route==='/gallery-admin.js'&&module==='hero'?'hero-admin.js':route==='/gallery-admin.js'&&module==='hero-preview'?'hero-preview.html':route==='/engine.js'&&module==='hero'?'hero-display.js':route==='/engine.js'&&module==='hero-preview'?'hero-preview.js':assets[route];
+    const selected=route==='/gallery-admin.js'&&module==='price-sync'?'price-sync-admin.js':route==='/gallery-admin.js'&&module==='hero'?'hero-admin.js':route==='/gallery-admin.js'&&module==='hero-preview'?'hero-preview.html':route==='/engine.js'&&module==='hero'?'hero-display.js':route==='/engine.js'&&module==='hero-preview'?'hero-preview.js':assets[route];
     if(selected==='hero-preview.html'){
      out['X-Frame-Options']='SAMEORIGIN';out['Content-Security-Policy']=out['Content-Security-Policy'].replace("frame-ancestors 'none'","frame-ancestors 'self'").replace("img-src 'self' data: blob:","img-src 'self' data: blob: https://skparket.ru");
     }
@@ -88,6 +88,13 @@ function createAdminHandler({storage,telegram,max,email,gallery,hero,env=process
    if(route==='/api/admin/telegram'){
     if(method==='GET'){const provider=event.queryStringParameters?.provider,channel=provider==='email'?email:provider==='max'?max:telegram;if(!channel)fail(503,'Уведомления пока не настроены');return reply(200,await channel.status())}
     if(method==='POST'){const b=json(1024),channel=b.provider==='email'?email:b.provider==='max'?max:telegram;if(!channel)fail(503,'Уведомления пока не настроены');return reply(200,await channel.action(b.action))}
+    fail(405,'Метод не поддерживается');
+   }
+   if(event.queryStringParameters?.view==='price-sync'&&['/api/admin/config','/api/admin/publish'].includes(route)){
+    if(!priceSync)fail(503,'Синхронизация цен пока недоступна');
+    if(route==='/api/admin/config'&&method==='GET')return reply(200,await priceSync.status());
+    if(route==='/api/admin/config'&&method==='PUT'){const b=json(1024);return reply(200,await priceSync.configure(b.revision,b.enabled))}
+    if(route==='/api/admin/publish'&&method==='POST'){const b=json(1024);if(b.action!=='check')fail(400,'Неизвестное действие');return reply(200,await priceSync.check())}
     fail(405,'Метод не поддерживается');
    }
    if(route==='/api/admin/config'&&method==='GET')return reply(200,await storage.state());

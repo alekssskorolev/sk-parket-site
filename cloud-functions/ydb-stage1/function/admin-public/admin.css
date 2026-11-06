@@ -72,3 +72,5 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 .hero-editor-view{position:sticky;top:20px;min-width:0}
 @media(max-width:1100px){.hero-editor-layout{grid-template-columns:1fr}.hero-editor-view{position:static;order:-1}.hero-editor-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}.hero-editor-controls label{min-width:0}.hero-editor-controls .hero-editor-actions,.hero-editor-controls>p{grid-column:1/-1}}
 @media(max-width:500px){.hero-editor-controls{grid-template-columns:1fr;padding:16px}.hero-editor-controls input[type=file]{font-size:12px}.hero-editor-actions button{flex:1 1 160px}}
+
+.panel>.check{margin-top:20px}.panel>.actions{display:flex;gap:10px;flex-wrap:wrap}

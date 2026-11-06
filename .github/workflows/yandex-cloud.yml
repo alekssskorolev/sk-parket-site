@@ -46,7 +46,7 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js email.js hero.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js email.js hero.js price-sync.js parket-sale.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
           cp -R "$FUNCTION_DIR/admin-public" .deploy/function/
