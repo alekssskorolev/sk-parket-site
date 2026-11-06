@@ -121,7 +121,7 @@ jobs:
                 await new Promise(resolve => setTimeout(resolve, 2500));
               }
             }
-            for (const [path, expected] of [['/admin', 200], ['/admin.js', 200], ['/gallery-admin.js', 200], ['/api/admin/gallery', 401], ['/api/admin/gallery?view=hero', 401], ['/gallery-admin.js?module=hero', 200], ['/engine.js?module=hero', 200], ['/api/session', 401], ['/api/admin/leads', 401], ['/api/admin/config', 401]]) {
+            for (const [path, expected] of [['/admin', 200], ['/admin.js', 200], ['/gallery-admin.js', 200], ['/api/admin/gallery', 401], ['/api/admin/gallery?view=hero', 401], ['/gallery-admin.js?module=hero', 200], ['/engine.js?module=hero', 200], ['/api/session', 401], ['/api/admin/leads', 401], ['/api/admin/config', 401], ['/api/admin/config?view=price-sync', 401], ['/gallery-admin.js?module=price-sync', 200]]) {
               const response = await stableFetch(base + path);
               if (response.status !== expected) throw new Error(path + ': expected ' + expected + ', received ' + response.status);
               console.log(path + ': ' + response.status);
