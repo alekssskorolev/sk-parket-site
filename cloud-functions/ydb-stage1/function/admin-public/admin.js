@@ -1,3 +1,4 @@
+import {createHeroAdmin} from '/gallery-admin.js?module=hero';
 import {createGalleryAdmin} from '/gallery-admin.js';
 import {exportLead,exportLeadCsv} from '/lead-export.js';
 import {validateConfig,calculate,isChemical,materialData,updateMaterialRate,calculationExclusions} from '/engine.js';
@@ -7,7 +8,7 @@ let csrf='',state=null,c=null,dirty=false,section='leads',editing=null,leadPage=
 const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 let toastTimer;function toast(message,error=false){$('toast').textContent=message;$('toast').className=error?'error':'';$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,7000)}
 async function api(url,method='GET',data){const r=await fetch(url,{method,headers:{...(data?{'Content-Type':'application/json'}:{}),...(csrf?{'X-CSRF-Token':csrf}:{})},body:data?JSON.stringify(data):undefined});const b=await r.json();if(!r.ok){if(r.status===401&&url!=='/api/login'){$('login').hidden=false;$('app').hidden=true;csrf='';$('password').value=''}throw Error(b.error||'Ошибка соединения')}return b}
-const galleryAdmin=createGalleryAdmin({api,toast});
+const galleryAdmin=createGalleryAdmin({api,toast}),heroAdmin=createHeroAdmin({api,toast});let settingsTab='hero';
 function guarded(fn){return async(...args)=>{try{await fn(...args)}catch(e){toast(e.message,true)}}}
 function mark(){dirty=true;$('dirty').textContent='Есть изменения';$('dirty').classList.add('changed');$('save-status').textContent='Изменения ещё не сохранены. Сайт пока не меняется.'}
 function accept(s){state=s;c=clone(s.draft);dirty=false;$('dirty').textContent='Черновик сохранён';$('dirty').classList.remove('changed');$('save-status').textContent='Сохранено в черновике. Для сайта нажмите «Опубликовать изменения».';render()}
@@ -16,15 +17,15 @@ async function save(){validateConfig(c);const s=await api('/api/admin/config','P
 async function start(){await load();$('login').hidden=true;$('app').hidden=false;await refreshCount()}
 $('login-form').addEventListener('submit',async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const s=await api('/api/login','POST',{password:$('password').value});$('password').value='';csrf=s.csrf;$('login-error').textContent='';await start()}catch(e){$('login-error').textContent=e.message}finally{b.disabled=false}});
 $('admin-brand').onclick=e=>{e.preventDefault();location.reload()};
-$('logout').onclick=guarded(async()=>{if((dirty||galleryAdmin.hasChanges())&&!confirm('Несохранённые изменения будут потеряны. Выйти?'))return;await api('/api/logout','POST',{});location.reload()});
-for(const [heading,ids] of [['Заявки',['leads']],['Цены и материалы',['woods','finishes','bases','foundations','patterns','items']],['Сайт',['gallery']],['Настройки расчёта',['rules','history']],['Управление',['settings']]]){const group=el('div',undefined,'nav-group');group.append(el('h2',heading,'nav-group-title'));for(const id of ids){const b=el('button',labels[id]);b.dataset.section=id;b.title=labels[id];b.onclick=()=>{if(galleryAdmin.isBusy()){toast('Дождитесь завершения загрузки',true);return}section=id;if(id==='leads'){leadFilter='active';leadSearch=''}render()};group.append(b)}$('navigation').append(group)}
-window.addEventListener('beforeunload',e=>{if(dirty||galleryAdmin.hasChanges()){e.preventDefault();e.returnValue=''}});
+$('logout').onclick=guarded(async()=>{if((dirty||galleryAdmin.hasChanges()||heroAdmin.hasChanges())&&!confirm('Несохранённые изменения будут потеряны. Выйти?'))return;await api('/api/logout','POST',{});location.reload()});
+for(const [heading,ids] of [['Заявки',['leads']],['Цены и материалы',['woods','finishes','bases','foundations','patterns','items']],['Сайт',['gallery']],['Настройки расчёта',['rules','history']],['Управление',['settings']]]){const group=el('div',undefined,'nav-group');group.append(el('h2',heading,'nav-group-title'));for(const id of ids){const b=el('button',labels[id]);b.dataset.section=id;b.title=labels[id];b.onclick=()=>{if(galleryAdmin.isBusy()||heroAdmin.isBusy()){toast('Дождитесь завершения загрузки',true);return}if(heroAdmin.hasChanges()&&id!=='settings'&&!confirm('В фоне есть несохранённые изменения. Перейти в другой раздел?'))return;section=id;if(id==='leads'){leadFilter='active';leadSearch=''}render()};group.append(b)}$('navigation').append(group)}
+window.addEventListener('beforeunload',e=>{if(dirty||galleryAdmin.hasChanges()||heroAdmin.hasChanges()){e.preventDefault();e.returnValue=''}});
 function field(parent,label,value,type='text',hint=''){const l=el('label',label),i=el(type==='textarea'?'textarea':'input');if(type!=='textarea')i.type=type;i.value=value??'';if(type==='number'){i.min='0';i.step='any'}l.append(i);if(hint)l.append(el('small',hint));parent.append(l);return i}
 function select(parent,label,value,options){const l=el('label',label),s=el('select');for(const [v,n] of options){const o=el('option',n);o.value=v;s.append(o)}s.value=value;l.append(s);parent.append(l);return s}
 function check(parent,label,value){const l=el('label',undefined,'check'),i=el('input');i.type='checkbox';i.checked=!!value;l.append(i,el('span',label));parent.append(l);return i}
 function recipes(parent,selected){parent.append(el('h3','Что включать в расчёт'));parent.append(el('p','Отметьте нужные работы и материалы. Повторяющиеся позиции считаются один раз.','muted'));const d=el('div',undefined,'recipe'),map=new Map();c.items.forEach(x=>{const i=check(d,x.name+(x.active?'':' (отключено)'),selected.includes(x.id));i.disabled=!x.active;map.set(x.id,i)});parent.append(d);return ()=>[...map].filter(([,i])=>i.checked).map(([id])=>id)}
 function render(){if(!c)return;document.querySelectorAll('nav button').forEach(b=>{const active=b.dataset.section===section;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});$('title').textContent=labels[section];$('intro').hidden=section==='leads';$('dirty').hidden=['leads','gallery','settings'].includes(section);$('save-bar').hidden=['leads','history','gallery','settings'].includes(section);$('content').replaceChildren();
- if(section==='settings'){$('intro').textContent='Подключение и проверка уведомлений о новых заявках.';renderSettings();return}
+ if(section==='settings'){$('intro').textContent='Оформление первого экрана сайта и уведомления о новых заявках.';renderSettings();return}
  if(section==='gallery'){$('intro').textContent='Два отдельных блока: карусель «До / После» и плитка готовых работ под ней. Выберите нужную вкладку ниже. Сохранение черновика не меняет сайт.';galleryAdmin.mount($('content')).catch(e=>toast(e.message,true));return}
  if(section==='leads'){$('intro').textContent='';showLeads();return}
  if(section==='history'){$('intro').textContent='Предыдущую версию можно вернуть в черновик, проверить и снова опубликовать.';history();return}
@@ -142,7 +143,11 @@ addEventListener('focus',scheduleLeadSync);
 addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleLeadSync()});
 try{const s=await api('/api/session');csrf=s.csrf;await start()}catch{/* Login screen; no data accessible without session. */}
 
-function renderSettings(){const p=$('content');p.replaceChildren(el('h2','Уведомления о заявках'),emailTools(),maxTools(),telegramTools(),notificationTools())}
+function renderSettings(){
+ const p=$('content');p.replaceChildren();const tabs=el('div',undefined,'hero-editor-tabs');
+ for(const [key,title]of [['hero','Фон первого экрана'],['notifications','Уведомления']]){const b=el('button',title,'quiet');b.setAttribute('aria-pressed',String(settingsTab===key));b.onclick=()=>{if(heroAdmin.isBusy())return;settingsTab=key;renderSettings()};tabs.append(b)}p.append(tabs);const body=el('div');p.append(body);
+ if(settingsTab==='hero')heroAdmin.mount(body).catch(e=>toast(e.message,true));else body.append(el('h2','Уведомления о заявках'),emailTools(),maxTools(),telegramTools(),notificationTools());
+}
 function emailTools(){
  const box=el('section',undefined,'telegram-tools');box.setAttribute('aria-label','Уведомления по почте');
  const text=el('p','Почта: проверяем подключение…'),test=el('button','Отправить проверочное письмо','quiet');test.disabled=true;box.append(text,test);

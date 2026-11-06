@@ -7,6 +7,7 @@ on:
       - 'web-cloud/**'
       - 'docs/**'
       - 'scripts/build-cloud.mjs'
+      - 'scripts/build-hero-preview.mjs'
       - '.github/workflows/yandex-cloud.yml'
   workflow_dispatch:
 permissions:
@@ -37,7 +38,7 @@ jobs:
       - name: Verify reproducible cloud site
         run: |
           node scripts/build-cloud.mjs
-          git diff --exit-code -- docs
+          git diff --exit-code -- docs cloud-functions/ydb-stage1/function/admin-public/hero-preview.html cloud-functions/ydb-stage1/function/admin-public/hero-display.js
       - name: Install pinned dependencies and run tests
         run: |
           npm ci --prefix "$FUNCTION_DIR" --ignore-scripts --no-audit --no-fund
@@ -45,7 +46,7 @@ jobs:
       - name: Stage only runtime files
         run: |
           mkdir -p .deploy/function
-          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js email.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
+          for file in index.js app.js admin-app.js admin-storage.js public-app.js telegram.js max.js email.js hero.js gallery.js gallery-storage.js ydb-storage.js engine.mjs config.seed.json package.json package-lock.json; do
             cp "$FUNCTION_DIR/$file" .deploy/function/
           done
           cp -R "$FUNCTION_DIR/admin-public" .deploy/function/

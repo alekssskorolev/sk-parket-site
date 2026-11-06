@@ -10,7 +10,7 @@ const SAFE={
  'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
 };
-function createAdminHandler({storage,telegram,max,email,gallery,env=process.env,validateConfig,now=()=>Date.now()}){
+function createAdminHandler({storage,telegram,max,email,gallery,hero,env=process.env,validateConfig,now=()=>Date.now()}){
  let verifier;
  const cookie=(value,age)=>`${COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${age}`;
  function passwordReady(){return typeof env.ADMIN_PASSWORD==='string'&&env.ADMIN_PASSWORD.length>=14&&env.ADMIN_PASSWORD.length<=256}
@@ -43,8 +43,13 @@ function createAdminHandler({storage,telegram,max,email,gallery,env=process.env,
    const write=!['GET','HEAD'].includes(method);
    if(write&&h.origin!==origin)fail(403,'Запрос с другого сайта запрещён');
    if(assets[route]&&['GET','HEAD'].includes(method)){
-    const ext=path.extname(assets[route]);out['Content-Type']=({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[ext]+'; charset=utf-8';
-    return {statusCode:200,headers:out,body:method==='HEAD'?'':fs.readFileSync(path.join(__dirname,'admin-public',assets[route]),'utf8')};
+    const module=event.queryStringParameters?.module;
+    const selected=route==='/gallery-admin.js'&&module==='hero'?'hero-admin.js':route==='/gallery-admin.js'&&module==='hero-preview'?'hero-preview.html':route==='/engine.js'&&module==='hero'?'hero-display.js':route==='/engine.js'&&module==='hero-preview'?'hero-preview.js':assets[route];
+    if(selected==='hero-preview.html'){
+     out['X-Frame-Options']='SAMEORIGIN';out['Content-Security-Policy']=out['Content-Security-Policy'].replace("frame-ancestors 'none'","frame-ancestors 'self'").replace("img-src 'self' data: blob:","img-src 'self' data: blob: https://skparket.ru");
+    }
+    const ext=path.extname(selected);out['Content-Type']=({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[ext]+'; charset=utf-8';
+    return {statusCode:200,headers:out,body:method==='HEAD'?'':fs.readFileSync(path.join(__dirname,'admin-public',selected),'utf8')};
    }
    if(route==='/api/login'&&method==='POST'){
     const ip=event.requestContext?.identity?.sourceIp;
@@ -63,11 +68,18 @@ function createAdminHandler({storage,telegram,max,email,gallery,env=process.env,
    if(route==='/api/session'&&method==='GET')return reply(200,{csrf:s.csrf});
    if(route==='/api/logout'&&method==='POST'){await storage.deleteSession(digest(value));out['Set-Cookie']=cookie('',0);return reply(200,{ok:true})}
    if(route.startsWith('/api/admin/gallery')){
+    if(event.queryStringParameters?.view==='hero'){
+     if(!hero)fail(503,'Редактор фона пока недоступен');
+     if(route==='/api/admin/gallery'&&method==='GET')return reply(200,await hero.state());
+     if(route==='/api/admin/gallery'&&method==='PUT'){const b=json(12000);return reply(200,await hero.save(b.revision,b.config))}
+     if(route==='/api/admin/gallery/publish'&&method==='POST'){const b=json(1024);return reply(200,await (b.action==='rollback'?hero.rollback(b.revision):hero.publish(b.revision)))}
+     fail(405,'Метод не поддерживается');
+    }
     if(!gallery)fail(503,'Галерея пока не настроена');
     if(route==='/api/admin/gallery'&&method==='GET')return reply(200,await gallery.state());
     if(route==='/api/admin/gallery'&&method==='PUT'){const b=json(200000);return reply(200,await gallery.save(b.revision,b.items))}
     if(route==='/api/admin/gallery/publish'&&method==='POST'){const b=json(1024);return reply(200,await gallery.publish(b.revision))}
-    if(route==='/api/admin/gallery/media'&&method==='POST'){const b=json(2000000);return reply(201,await gallery.upload(b.data))}
+    if(route==='/api/admin/gallery/media'&&method==='POST'){const b=json(2000000);return reply(201,await gallery.upload(b.data,b.heroDevice??null))}
     const photo=route.match(/^\/api\/admin\/gallery\/media\/([a-f0-9-]{36})$/);
     if(photo&&method==='GET'){const image=await gallery.image(photo[1],true);return {statusCode:200,headers:{...out,'Content-Type':'image/webp'},body:image.data.toString('base64'),isBase64Encoded:true}}
     if(photo&&method==='DELETE')return reply(200,await gallery.remove(photo[1]));
