@@ -1,6 +1,7 @@
 'use strict';
 const {TableDescription,Column,Types,TypedValues:V,TypedData,StatusCode}=require('ydb-sdk');
 const {INSERT_ORDER,insertParams}=require('./ydb-storage');
+const {applyPriceEdit}=require('./price-sync');
 const parse=x=>typeof x==='string'?JSON.parse(x):x;
 const rows=r=>r.resultSets?.[0]?TypedData.createNativeObjects(r.resultSets[0]):[];
 function createAdminStorage(getDriver,seed){
@@ -79,7 +80,9 @@ function createAdminStorage(getDriver,seed){
   telegramJob:(id,fn)=>mutate('sk_telegram_outbox',id,fn),
   async state(){const p=await read('sk_admin_state','prices');return {...p,history:p.history.map(({id,created})=>({id,created}))}},
   async current(){return (await read('sk_admin_state','prices')).published},
-  async changeState(revision,fn){return mutate('sk_admin_state','prices',p=>{if(p.revision!==revision){const e=Error('Данные изменились в другой вкладке. Обновите страницу.');e.status=409;throw e}const v=fn(p);v.revision++;return {value:v,result:true}})},
+  syncRead:()=>read('sk_admin_state','prices'),
+  syncMutate:fn=>mutate('sk_admin_state','prices',fn),
+  async changeState(revision,fn){return mutate('sk_admin_state','prices',p=>{if(p.revision!==revision){const e=Error('Данные изменились в другой вкладке. Обновите страницу.');e.status=409;throw e}const v=applyPriceEdit(p,fn);v.revision++;return {value:v,result:true}})},
   async limit(key,max,ms,now){return mutate('sk_admin_limits',key,p=>{if(!p||p.expires<=now)p={count:0,expires:now+ms};p.count++;return {value:p,result:p.count<=max}})},
   getSession:id=>read('sk_admin_sessions',id),
   async putSession(id,p){return mutate('sk_admin_sessions',id,()=>({value:p,result:true}))},
