@@ -324,3 +324,5 @@ html{--section-shade:#e8e5dd}
 @media(min-width:700px){
 #hero.hero::before{background-image:none;background-position:right top;}
 }
+
+@media(min-width:700px){#hero .facts{font-size:16px}}
