@@ -1,0 +1,30 @@
+name: Manual public Lighthouse audit
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lighthouse:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install pinned audit and browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/seo-browser" playwright@1.56.1 lighthouse@12.8.2 --ignore-scripts --no-audit --no-fund
+          "$RUNNER_TEMP/seo-browser/node_modules/.bin/playwright" install --with-deps chromium
+          echo "CHROME_PATH=$(node -e "console.log(require(process.env.RUNNER_TEMP + '/seo-browser/node_modules/playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
+      - name: Measure public mobile and desktop Lighthouse
+        run: |
+          mkdir -p seo-evidence/lighthouse
+          "$RUNNER_TEMP/seo-browser/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/mobile.json --quiet
+          "$RUNNER_TEMP/seo-browser/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --preset=desktop --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/desktop.json --quiet
+          node scripts/summarize-lighthouse.mjs seo-evidence/lighthouse
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-evidence
+          path: seo-evidence/

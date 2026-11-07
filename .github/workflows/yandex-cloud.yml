@@ -2,13 +2,7 @@ name: Deploy skparket-api to Yandex Cloud
 on:
   push:
     branches: [main]
-    paths:
-      - 'cloud-functions/ydb-stage1/**'
-      - 'web-cloud/**'
-      - 'docs/**'
-      - 'scripts/build-cloud.mjs'
-      - 'scripts/build-hero-preview.mjs'
-      - '.github/workflows/yandex-cloud.yml'
+    paths-ignore: ['**/*.md', 'AGENTS.md', 'agents/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,8 +10,23 @@ concurrency:
   group: skparket-api-production
   cancel-in-progress: false
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.scope.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Classify backend runtime and generated preview changes
+        id: scope
+        run: node scripts/ci/classify-changes.mjs
   deploy:
-    if: github.repository == 'alekssskorolev/sk-parket-site' && github.ref == 'refs/heads/main'
+    needs: changes
+    if: github.repository == 'alekssskorolev/sk-parket-site' && github.ref == 'refs/heads/main' && needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

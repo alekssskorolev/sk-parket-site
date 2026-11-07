@@ -1,41 +1,69 @@
 name: SEO release checks
 on:
   pull_request:
-    paths-ignore: ['SEO_IMPLEMENTATION_REPORT.md']
   push:
     branches: [main]
-    paths-ignore: ['SEO_IMPLEMENTATION_REPORT.md']
 permissions:
   contents: read
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.scope.outputs.build }}
+      root: ${{ steps.scope.outputs.root }}
+      cloud: ${{ steps.scope.outputs.cloud }}
+      seo: ${{ steps.scope.outputs.seo }}
+      browser: ${{ steps.scope.outputs.browser }}
+      images: ${{ steps.scope.outputs.images }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Classify complete change range (unknown paths run all checks)
+        id: scope
+        run: node scripts/ci/classify-changes.mjs
+  # Keep this job present and successful for docs-only changes: existing branch
+  # protection can continue requiring verify without waiting on skipped jobs.
   verify:
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Rebuild and verify committed Pages output
+      - name: Verify CI change classifier
+        run: node --test test/ci/*.test.mjs
+      - name: Rebuild and verify all committed cloud-generated outputs
+        if: needs.changes.outputs.build == 'true'
         run: |
           npm run build:pages
-          git diff --exit-code -- docs
-          node --test test/seo.test.mjs
-      - name: Existing calculator, consent, gallery and API regression tests
+          git diff --exit-code -- docs cloud-functions/ydb-stage1/function/admin-public/hero-preview.html cloud-functions/ydb-stage1/function/admin-public/hero-display.js
+      - name: Root regressions (includes SEO suite)
+        if: needs.changes.outputs.root == 'true'
+        run: npm test
+      - name: SEO contracts when root suite is not needed
+        if: needs.changes.outputs.seo == 'true' && needs.changes.outputs.root != 'true'
+        run: node --test test/seo.test.mjs
+      - name: Cloud API and admin regressions
+        if: needs.changes.outputs.cloud == 'true'
         run: |
           npm ci --prefix cloud-functions/ydb-stage1/function --ignore-scripts --no-audit --no-fund
-          npm test
           node --test cloud-functions/ydb-stage1/test/*.test.cjs
   baseline:
-    if: github.event_name == 'pull_request'
-    needs: verify
-    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && needs.changes.outputs.browser == 'true'
+    needs: [changes, verify]
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Install browser test tooling outside the project
+      - name: Install pinned browser tooling on its supported runner
         run: |
           npm install --prefix "$RUNNER_TEMP/seo-browser" playwright@1.56.1 --ignore-scripts --no-audit --no-fund
           "$RUNNER_TEMP/seo-browser/node_modules/.bin/playwright" install --with-deps chromium
@@ -43,53 +71,40 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
         run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/baseline published
-      - name: Verify currently published responsive image files
-        run: node scripts/check-image-assets.mjs seo-evidence/current-images
-      - name: Check candidate HTML in an isolated browser route
+      - name: Check candidate HTML with mocked form submissions
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
         run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/candidate candidate
-      - name: Measure public Lighthouse with the same profiles
-        run: |
-          npm install --prefix "$RUNNER_TEMP/seo-lighthouse" lighthouse@12.8.2 --ignore-scripts --no-audit --no-fund
-          mkdir -p seo-evidence/lighthouse
-          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/mobile.json --quiet
-          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --preset=desktop --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/desktop.json --quiet
-          node scripts/summarize-lighthouse.mjs seo-evidence/lighthouse
-      - name: Save baseline DOM and browser evidence
+      - name: Save browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: seo-baseline-evidence
           path: seo-evidence/
   production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: verify
-    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.changes.outputs.seo == 'true' || needs.changes.outputs.browser == 'true' || needs.changes.outputs.images == 'true')
+    needs: [changes, verify]
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Check published HTTP responses after Pages propagation
+      - name: Check published SEO and exact HTML after Pages propagation
+        if: needs.changes.outputs.seo == 'true'
         run: node scripts/check-public-seo.mjs seo-evidence/public
-      - name: Install browser test tooling outside the project
+      - name: Install pinned browser tooling on its supported runner
+        if: needs.changes.outputs.browser == 'true'
         run: |
           npm install --prefix "$RUNNER_TEMP/seo-browser" playwright@1.56.1 --ignore-scripts --no-audit --no-fund
           "$RUNNER_TEMP/seo-browser/node_modules/.bin/playwright" install --with-deps chromium
       - name: Check public calculator, menus, gallery, contacts and consents
+        if: needs.changes.outputs.browser == 'true'
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/seo-browser/node_modules/playwright/index.mjs
         run: node scripts/check-browser.mjs https://skparket.ru/ seo-evidence/browser
-      - name: Measure public Lighthouse with the same profiles
-        run: |
-          npm install --prefix "$RUNNER_TEMP/seo-lighthouse" lighthouse@12.8.2 --ignore-scripts --no-audit --no-fund
-          mkdir -p seo-evidence/lighthouse
-          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/mobile.json --quiet
-          "$RUNNER_TEMP/seo-lighthouse/node_modules/.bin/lighthouse" https://skparket.ru/ --config-path=scripts/lighthouse-config.cjs --preset=desktop --chrome-flags="--headless --no-sandbox" --output=json --output-path=seo-evidence/lighthouse/desktop.json --quiet
-          node scripts/summarize-lighthouse.mjs seo-evidence/lighthouse
-      - name: Save actual HTTP responses and browser evidence
+      - name: Save HTTP and browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
