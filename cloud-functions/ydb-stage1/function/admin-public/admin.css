@@ -74,3 +74,8 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 @media(max-width:500px){.hero-editor-controls{grid-template-columns:1fr;padding:16px}.hero-editor-controls input[type=file]{font-size:12px}.hero-editor-actions button{flex:1 1 160px}}
 
 .panel>.check{margin-top:20px}.panel>.actions{display:flex;gap:10px;flex-wrap:wrap}
+
+/* Decorative icons only in lead preview tiles; phone remains a tel link. */
+.lead-tile .lead-value{display:flex;align-items:flex-start;gap:8px}
+.lead-value-icon{width:20px;height:20px;flex:none;margin-top:1px;color:var(--muted);pointer-events:none}
+.lead-value-text{min-width:0;overflow-wrap:anywhere}
