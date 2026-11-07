@@ -220,7 +220,7 @@ $('contact-form').addEventListener('submit',async e=>{
  if(!$('consent').checked){$('form-status').textContent='Подтвердите согласие на обработку данных.';return}
  pendingRequestId||=crypto.randomUUID();
  const goalSource=leadSource;
- const payload={requestId:pendingRequestId,name:$('client-name').value.trim(),phone:n,comment:$('comment').value,consent:true,consentVersion:publicState.consentVersion,website:$('website').value,...(selectedEstimate||{}),photos:[]};
+ const payload={requestId:pendingRequestId,name:$('client-name').value.trim(),phone:$('phone').value,comment:$('comment').value,consent:true,consentVersion:publicState.consentVersion,website:$('website').value,...(selectedEstimate||{}),photos:[]};
  const b=e.submitter||$('contact-form').querySelector('button[type=submit]');submitting=true;b.disabled=true;
  for(const id of ['client-name','phone','comment','consent'])$(id).disabled=true;
  $('form-status').textContent='Отправляем…';

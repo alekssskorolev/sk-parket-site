@@ -44,8 +44,10 @@ function createAdminStorage(getDriver,seed){
    }catch(e){await s.rollbackTransaction({txId:tx.id}).catch(()=>{});throw e}
   })}catch(e){if(e.constructor.status!==StatusCode.ABORTED||attempt>=4)throw e}
  }
+ async function writeMetadata(s,tx,id,value){await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; UPSERT INTO sk_admin_state (id,payload) VALUES ($id,$payload);',{$id:V.utf8(id),$payload:V.jsonDocument(JSON.stringify(value))},{txId:tx})}
+ async function orderTransaction(fn){const d=await getDriver();for(let attempt=0;;attempt++)try{return await d.tableClient.withSession(async s=>{const tx=await s.beginTransaction({serializableReadWrite:{}});try{const result=await fn(s,tx.id);await s.commitTransaction({txId:tx.id});return result}catch(e){await s.rollbackTransaction({txId:tx.id}).catch(()=>{});throw e}})}catch(e){if(e.constructor.status!==StatusCode.ABORTED||attempt>=4)throw e}}
  const read=async(table,id)=>{await ensure();const r=await query(`DECLARE $id AS Utf8; SELECT payload FROM ${table} WHERE id=$id;`,{$id:V.utf8(id)});return r[0]?parse(r[0].payload):null};
- function lead(x){const e=x.estimate?parse(x.estimate):null;return {...x,created:new Date(x.created).toISOString(),updated:new Date(x.updated).toISOString(),estimate:e,version:e?.priceVersion||null,photos:[]}}
+ function lead(x){const e=x.estimate?parse(x.estimate):null,meta=x.metadata?parse(x.metadata):{};const {metadata,...data}=x;return {...data,rawPhone:meta.rawPhone||null,revenueKopecks:meta.revenueKopecks??null,revision:meta.revision||0,created:new Date(x.created).toISOString(),updated:new Date(x.updated).toISOString(),estimate:e,version:e?.priceVersion||null,photos:[]}}
  return {
   ensure,
   lookupRequest:id=>read('sk_public_requests',id),
@@ -61,6 +63,7 @@ function createAdminStorage(getDriver,seed){
       await s.commitTransaction({txId:tx.id});return {id:old.id,created:false};
      }
      await s.executeQuery(INSERT_ORDER,insertParams(order),{txId:tx.id});
+     await writeMetadata(s,tx.id,order.id,{rawPhone:order.rawPhone||order.phone,revision:0});
      await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO sk_public_requests (id,payload,expires) VALUES($id,$payload,$expires);',{$id:V.utf8(requestId),$payload:V.jsonDocument(JSON.stringify({id:order.id,fingerprint,expires})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
      if(notify)await s.executeQuery(`DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO ${notify==='max'?'sk_max_outbox':'sk_telegram_outbox'}(id,payload,expires) VALUES($id,$payload,$expires);`,{$id:V.utf8(order.id),$payload:V.jsonDocument(JSON.stringify({expires,attempts:0,next:0,leaseUntil:0,provider:notify==='max'?'max':'telegram'})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
      if(email)await s.executeQuery('DECLARE $id AS Utf8; DECLARE $payload AS JsonDocument; DECLARE $expires AS Timestamp; UPSERT INTO sk_email_outbox(id,payload,expires) VALUES($id,$payload,$expires);',{$id:V.utf8(order.id),$payload:V.jsonDocument(JSON.stringify({expires,attempts:0,next:0,leaseUntil:0})),$expires:V.timestamp(new Date(expires))},{txId:tx.id});
@@ -88,13 +91,32 @@ function createAdminStorage(getDriver,seed){
   async putSession(id,p){return mutate('sk_admin_sessions',id,()=>({value:p,result:true}))},
   async deleteSession(id){return mutate('sk_admin_sessions',id,()=>({value:null,result:true}))},
   async list(cursor){await ensure();let date=new Date('2100-01-01'),id='';if(cursor){const p=parse(Buffer.from(cursor,'base64url').toString());date=new Date(p.created);id=p.id;if(!Number.isFinite(+date)||typeof id!=='string')throw Object.assign(Error('Неверная страница'),{status:400})}
-   const r=await query(`DECLARE $created AS Timestamp; DECLARE $id AS Utf8; SELECT id,created_at AS created,updated_at AS updated,name,phone,comment,status,admin_note AS note,estimate FROM orders WHERE created_at < $created OR (created_at=$created AND id<$id) ORDER BY created_at DESC,id DESC LIMIT 50;`,{$created:V.timestamp(date),$id:V.utf8(id)});
+   const r=await query(`DECLARE $created AS Timestamp; DECLARE $id AS Utf8; SELECT o.id AS id,o.created_at AS created,o.updated_at AS updated,o.name AS name,o.phone AS phone,o.comment AS comment,o.status AS status,o.admin_note AS note,o.estimate AS estimate,m.payload AS metadata FROM orders AS o LEFT JOIN sk_admin_state AS m ON o.id=m.id WHERE o.created_at < $created OR (o.created_at=$created AND o.id<$id) ORDER BY created DESC,id DESC LIMIT 50;`,{$created:V.timestamp(date),$id:V.utf8(id)});
    const leads=r.map(lead);const counts=await query("SELECT COUNT(*) AS n FROM orders WHERE status='new';");
    return {leads:leads.map(({estimate,...x})=>({...x,estimateSummary:estimate?{total:estimate.total,partial:estimate.partial,area:estimate.area,pattern:estimate.pattern}:null})),newCount:Number(counts[0].n),next:r.length===50?Buffer.from(JSON.stringify({created:leads.at(-1).created,id:leads.at(-1).id})).toString('base64url'):null};
   },
-  async getLead(id){await ensure();const r=await query('DECLARE $id AS Utf8; SELECT id,created_at AS created,updated_at AS updated,name,phone,comment,status,admin_note AS note,estimate FROM orders WHERE id=$id;',{$id:V.utf8(id)});return r[0]?lead(r[0]):null},
-  async updateLead(id,status,note){return query('DECLARE $id AS Utf8; DECLARE $status AS Utf8; DECLARE $note AS Utf8; DECLARE $now AS Timestamp; UPDATE orders SET status=$status,admin_note=$note,updated_at=$now WHERE id=$id;',{$id:V.utf8(id),$status:V.utf8(status),$note:V.utf8(note),$now:V.timestamp(new Date())})},
-  async deleteLead(id){return query('DECLARE $id AS Utf8; DELETE FROM orders WHERE id=$id; DELETE FROM sk_telegram_outbox WHERE id=$id; DELETE FROM sk_max_outbox WHERE id=$id; DELETE FROM sk_email_outbox WHERE id=$id;',{$id:V.utf8(id)})},
+  async getLead(id){await ensure();const r=await query('DECLARE $id AS Utf8; SELECT o.id AS id,o.created_at AS created,o.updated_at AS updated,o.name AS name,o.phone AS phone,o.comment AS comment,o.status AS status,o.admin_note AS note,o.estimate AS estimate,m.payload AS metadata FROM orders AS o LEFT JOIN sk_admin_state AS m ON o.id=m.id WHERE o.id=$id;',{$id:V.utf8(id)});return r[0]?lead(r[0]):null},
+  async updateLead(id,status,note,change={}){
+   await ensure();return orderTransaction(async(s,tx)=>{
+    const r=rows(await s.executeQuery('DECLARE $id AS Utf8; SELECT status,updated_at AS updated FROM orders WHERE id=$id;',{$id:V.utf8(id)},{txId:tx}));
+    if(!r[0])throw Object.assign(Error('Заявка не найдена'),{status:404});
+    const m=rows(await s.executeQuery('DECLARE $id AS Utf8; SELECT payload FROM sk_admin_state WHERE id=$id;',{$id:V.utf8(id)},{txId:tx}));
+    const meta=m[0]?parse(m[0].payload):{},hasRevenue=change.revenueKopecks!==undefined;
+    const guarded=change.expectedRevision!==undefined||change.expectedUpdated!==undefined;
+    if(guarded||hasRevenue||meta.revenueKopecks!=null||r[0].status==='completed'){
+     if(change.expectedRevision!==(meta.revision||0)||change.expectedUpdated!==new Date(r[0].updated).toISOString())throw Object.assign(Error('Заявка изменена. Обновите данные и повторите.'),{status:409});
+    }
+    if(hasRevenue){
+     if(!Number.isSafeInteger(change.revenueKopecks)||change.revenueKopecks<0)throw Object.assign(Error('Проверьте полученную сумму'),{status:422});
+     meta.revenueKopecks=change.revenueKopecks;
+    }
+    if(status==='completed'&&meta.revenueKopecks==null)throw Object.assign(Error('Укажите полученную сумму'),{status:422});
+    meta.revision=(meta.revision||0)+1;
+    await s.executeQuery('DECLARE $id AS Utf8; DECLARE $status AS Utf8; DECLARE $note AS Utf8; DECLARE $now AS Timestamp; UPDATE orders SET status=$status,admin_note=$note,updated_at=$now WHERE id=$id;',{$id:V.utf8(id),$status:V.utf8(status),$note:V.utf8(note),$now:V.timestamp(new Date())},{txId:tx});
+    await writeMetadata(s,tx,id,meta);
+   });
+  },
+  async deleteLead(id){await ensure();return orderTransaction((s,tx)=>s.executeQuery('DECLARE $id AS Utf8; DELETE FROM orders WHERE id=$id; DELETE FROM sk_admin_state WHERE id=$id; DELETE FROM sk_telegram_outbox WHERE id=$id; DELETE FROM sk_max_outbox WHERE id=$id; DELETE FROM sk_email_outbox WHERE id=$id;',{$id:V.utf8(id)},{txId:tx}))},
  };
 }
 module.exports={createAdminStorage};

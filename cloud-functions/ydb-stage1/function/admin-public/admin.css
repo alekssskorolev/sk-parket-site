@@ -79,3 +79,5 @@ header .brand{text-decoration:none}header .brand:focus-visible{outline-offset:5p
 .lead-tile .lead-value{display:flex;align-items:flex-start;gap:8px}
 .lead-value-icon{width:20px;height:20px;flex:none;margin-top:1px;color:var(--muted);pointer-events:none}
 .lead-value-text{min-width:0;overflow-wrap:anywhere}
+
+.summary-tile.completed{background:#e6f5eb}.lead-tile.completed{background:#f0faf3}.lead-summary{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}.leads-toolbar>input{flex:1;min-width:200px}.leads-toolbar>#lead-income{white-space:nowrap}

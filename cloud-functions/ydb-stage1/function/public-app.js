@@ -56,7 +56,7 @@ function createPublicHandler({storage,telegram,email,gallery,hero,env=process.en
    if(!await storage.limit('leads-ip:'+hash(ip)+':'+Math.floor(+date/3600000),8,3600000,+date)||!await storage.limit('leads-global:'+Math.floor(+date/3600000),150,3600000,+date))fail(429,'Слишком много обращений. Попробуйте позже.');
    const current=await storage.current();let estimate=null;
    if(selection){if(b.version!==current.version)fail(409,'Цены обновились. Пересчитайте стоимость перед отправкой.');estimate={...calculate(current.config,selection),priceVersion:current.version}}
-   const order={id:makeId(),created:date,name:normalized.name,phone,comment:normalized.comment,estimate,consentVersion:env.CONSENT_VERSION};
+   const order={id:makeId(),created:date,name:normalized.name,phone,rawPhone:b.phone,comment:normalized.comment,estimate,consentVersion:env.CONSENT_VERSION};
    const saved=await storage.insertLeadOnce(order,requestId,fingerprint,+date+7*86400000,telegram?.ready()||false,email?.ready()||false);
    // Notification failure must never turn a committed application into a failed submission.
    if(saved.created&&telegram)await telegram.flush(1).catch(()=>{});

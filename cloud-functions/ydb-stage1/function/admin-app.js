@@ -114,7 +114,7 @@ function createAdminHandler({storage,telegram,max,email,gallery,hero,priceSync,e
    const m=route.match(/^\/api\/admin\/leads\/([a-zA-Z0-9_-]{1,100})$/);
    if(m){const id=m[1],lead=await storage.getLead(id);if(!lead)fail(404,'Заявка не найдена');
     if(method==='GET')return reply(200,lead);
-    if(method==='PATCH'){const b=json(10000);if(!['new','progress','closed'].includes(b.status)||typeof b.note!=='string'||b.note.length>2000||/[\u0000-\u0008\u000b-\u001f\u007f]/.test(b.note))fail(422,'Проверьте статус и заметку');await storage.updateLead(id,b.status,b.note);return reply(200,{ok:true})}
+    if(method==='PATCH'){const b=json(10000);if(!['new','progress','completed','closed'].includes(b.status)||typeof b.note!=='string'||b.note.length>2000||/[\u0000-\u0008\u000b-\u001f\u007f]/.test(b.note))fail(422,'Проверьте статус и заметку');if(b.revenueKopecks!==undefined&&(!Number.isSafeInteger(b.revenueKopecks)||b.revenueKopecks<0||!Number.isSafeInteger(b.expectedRevision)||b.expectedRevision<0||typeof b.expectedUpdated!=='string'))fail(422,'Проверьте полученную сумму');if(b.status==='completed'&&b.revenueKopecks===undefined&&lead.revenueKopecks==null)fail(422,'Укажите полученную сумму');await storage.updateLead(id,b.status,b.note,{revenueKopecks:b.revenueKopecks,expectedRevision:b.expectedRevision,expectedUpdated:b.expectedUpdated});return reply(200,{ok:true})}
     if(method==='DELETE'){await storage.deleteLead(id);return reply(200,{ok:true})}
    }
    fail(404,'Не найдено');
