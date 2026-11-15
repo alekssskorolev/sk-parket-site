@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {productionSeo,canonical,title,description} from '../scripts/seo.mjs';
 import {renderPublic} from '../scripts/render-public.mjs';
+import {renderHero} from '../scripts/render-hero.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('production SEO is restricted to the production build and preserves interactive forms',()=>{
  const source=read('public/index.html'),output=read('docs/index.html');
@@ -16,7 +17,7 @@ test('production SEO is restricted to the production build and preserves interac
  assert.ok(output.includes('content="'+description+'"'));
  assert.equal((output.match(/<h1\b/g)||[]).length,1);
  const expected=source.replaceAll('href="/privacy"','href="./privacy.html"').replaceAll('href="/consent"','href="./consent.html"').replaceAll('src="/site.js"','src="./site.js?v=seo-static-4"');
- assert.equal(output,productionSeo(renderPublic(expected)));
+ assert.equal(output,productionSeo(renderHero(renderPublic(expected))));
  const forms=s=>[...s.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].map(m=>m[0]);assert.deepEqual(forms(output),forms(expected));
  assert.equal(productionSeo(output),output);
 });

@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "published": {
+    "revision": 7,
+    "desktop": {
+      "image": "/api/gallery/images/45ce8b3e-1cee-41c3-82cd-283bf9eda3a2",
+      "name": "Изображение ChatGPT 30 окт. 2026 г., 15_43_41.png",
+      "text": "dark",
+      "zoom": 74,
+      "panX": 100,
+      "panY": 25,
+      "strength": 131,
+      "position": 57,
+      "width": 97,
+      "darkness": 0,
+      "brightness": 105
+    },
+    "mobile": {
+      "image": "/api/gallery/images/7188fb2d-d05f-4308-85ef-03cd2ca0f0c9",
+      "name": "Изображение ChatGPT 6 нояб. 2026 г., 14_07_33.png",
+      "text": "light",
+      "zoom": 109,
+      "panX": 50,
+      "panY": 54,
+      "strength": 0,
+      "position": 50,
+      "width": 100,
+      "darkness": 12,
+      "brightness": 71
+    }
+  },
+  "images": {
+    "desktop": {
+      "src": "./assets/hero/3c5bcf197f61bf6f7b0b6d6027fa336f3bcf71ee6a713b5e6248a3fbaa50baeb.webp",
+      "width": 1672,
+      "height": 941
+    },
+    "mobile": {
+      "src": "./assets/hero/23c88d50652870519d57f1244383a514813fd9071fc468c49e8e8d5274489d34.webp",
+      "width": 720,
+      "height": 1280
+    }
+  }
+}

@@ -1,0 +1,68 @@
+name: Publish static hero from admin
+on:
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Request an existing-SHA Pages rebuild even when the snapshot is unchanged'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: static-hero-publication
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: github.repository == 'alekssskorolev/sk-parket-site' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Check published hero without changing content
+        id: check
+        run: node scripts/refresh-hero-content.mjs --check
+      - name: Install the existing pinned image decoder
+        if: steps.check.outputs.changed == 'true'
+        run: npm ci --prefix cloud-functions/ydb-stage1/function --ignore-scripts --no-audit --no-fund
+      - name: Download published images, validate and build
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          node scripts/refresh-hero-content.mjs
+          npm run build:pages
+          npm test
+          node --test test/ci/*.test.mjs
+          node --test cloud-functions/ydb-stage1/test/*.test.cjs
+      - name: Check static first paint with cloud unavailable
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          npm install --prefix "$RUNNER_TEMP/hero-browser" playwright@1.56.1 --ignore-scripts --no-audit --no-fund
+          "$RUNNER_TEMP/hero-browser/node_modules/.bin/playwright" install --with-deps chromium
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/hero-browser/node_modules/playwright" node test/hero-static.browser.cjs
+      - name: Save only the validated hero snapshot and generated publication
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)"
+          git add public/content/hero.json public/assets/hero docs/index.html docs/assets/hero
+          git diff --cached --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Publish current admin hero as static Pages content"
+          git push origin HEAD:main
+      - name: Request Pages publication or recover an earlier failed request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HERO_FORCE_BUILD: ${{ inputs.force_build == true && 'true' || 'false' }}
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)"
+          node scripts/request-hero-pages-build.mjs
