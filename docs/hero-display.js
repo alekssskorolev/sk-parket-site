@@ -4,7 +4,7 @@ export function gradient(c){
  const start=c.position-c.width/2,k=c.strength/100,d=c.darkness/100;
  return 'linear-gradient(90deg,'+[[0,1],[21,.98],[38,.9],[55,.56],[76,.14],[100,0]].map(([p,a])=>`rgba(250,249,246,${Math.min(1,a*k).toFixed(4)}) ${(start+p*c.width/100).toFixed(2)}%`).join(',')+`),linear-gradient(90deg,rgba(0,0,0,${(d*.35).toFixed(4)}),rgba(0,0,0,${d.toFixed(4)}))`;
 }
-const css=`#hero.hero.hero-managed{position:relative;isolation:isolate;overflow:hidden;background:#faf9f6}
+export const heroDisplayCss=`#hero.hero.hero-managed{position:relative;isolation:isolate;overflow:hidden;background:#faf9f6}
 #hero.hero.hero-managed::before{display:none!important;background-image:none!important}
 #hero.hero.hero-managed::after{display:block!important;position:absolute;inset:0;z-index:1;pointer-events:none;background:var(--hero-overlay)!important}
 #hero.hero-managed .hero-background{position:absolute;max-width:none;max-height:none;z-index:0;pointer-events:none}
@@ -14,7 +14,7 @@ const css=`#hero.hero.hero-managed{position:relative;isolation:isolate;overflow:
 #hero.hero-managed .actions .btn{background:var(--hero-button)!important;border-color:var(--hero-button)!important;color:var(--hero-button-ink)!important}
 #hero.hero-managed .actions .btn.secondary{background:transparent!important;color:var(--hero-ink)!important;border-color:var(--hero-ink)!important}`;
 export function createHeroDisplay(hero,{assetBase='.',device=null}={}){
- if(!document.getElementById('hero-display-style')){const style=document.createElement('style');style.id='hero-display-style';style.textContent=css;document.head.append(style)}
+ if(!document.getElementById('hero-display-style')){const style=document.createElement('style');style.id='hero-display-style';style.textContent=heroDisplayCss;document.head.append(style)}
  hero.classList.add('hero-managed');
  const image=document.createElement('img');image.className='hero-background';image.alt='';image.setAttribute('aria-hidden','true');image.decoding='async';image.fetchPriority='high';hero.prepend(image);
  let current=null,source='',destroyed=false,activeDevice=device||'desktop';
